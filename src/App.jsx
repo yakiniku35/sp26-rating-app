@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle } from 'lucide-react';
 
@@ -96,10 +96,10 @@ const SCORE_ITEMS = [
 async function generateAIComment(topic, scores) {
   const prompt = `這位學生報告的題目是「${topic}」，觀眾給的評分為：內容專業度 ${scores.professionalism}/10、表達流暢度 ${scores.fluency}/10、視覺設計感 ${scores.visual}/10、整體啟發性 ${scores.inspiration}/10。請用繁體中文寫一段 50 字以內、溫暖鼓勵的評語。`;
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
     }
   );
@@ -360,6 +360,10 @@ export default function App() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   useEffect(() => {
+    if (auth.currentUser) {
+      setUserId(auth.currentUser.uid);
+      return;
+    }
     signInAnonymously(auth)
       .then((cred) => setUserId(cred.user.uid))
       .catch((err) => console.error('匿名登入失敗：', err));
@@ -423,10 +427,10 @@ export default function App() {
     }
   }, [currentPresentation, scores, comment, selectedRoom, userId]);
 
-  const fetchLeaderboard = useCallback(async () => {
+  useEffect(() => {
+    if (!showLeaderboard) return;
     setLeaderboardLoading(true);
-    try {
-      const snapshot = await getDocs(collection(db, 'ratings'));
+    const unsub = onSnapshot(collection(db, 'ratings'), (snapshot) => {
       const map = {};
       snapshot.forEach((doc) => {
         const d = doc.data();
@@ -442,17 +446,15 @@ export default function App() {
         .map((item) => ({ ...item, average: item.total / item.count }))
         .sort((a, b) => b.average - a.average);
       setLeaderboardData(list);
-    } catch (err) {
-      console.error('讀取排行榜失敗：', err);
-    } finally {
       setLeaderboardLoading(false);
-    }
-  }, []);
+    }, (err) => {
+      console.error('讀取排行榜失敗：', err);
+      setLeaderboardLoading(false);
+    });
+    return () => unsub();
+  }, [showLeaderboard]);
 
-  const handleOpenLeaderboard = () => {
-    setShowLeaderboard(true);
-    fetchLeaderboard();
-  };
+  const handleOpenLeaderboard = () => setShowLeaderboard(true);
 
   return (
     <div style={styles.app}>
@@ -594,6 +596,8 @@ export default function App() {
                 即時排行榜
               </div>
               <button
+                type="button"
+                aria-label="關閉"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
                 onClick={() => setShowLeaderboard(false)}
               >

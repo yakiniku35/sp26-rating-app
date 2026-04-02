@@ -26,10 +26,23 @@
 
 1. 前往 [Firebase Console](https://console.firebase.google.com/)
 2. 建立新專案，命名為 `SP26-Rating`
-3. 進入 **Build > Firestore Database**，點擊「建立資料庫」，選擇「測試模式」
-4. 進入 **Build > Authentication**，在 Sign-in method 中開啟「**匿名 (Anonymous)**」登入
-5. 在「**專案設定 > 一般**」下方找到 SDK 設定，複製 `firebaseConfig` 物件的值
-6. 開啟 `src/App.jsx`，將 `firebaseConfig` 中的 placeholder 替換為您的實際設定值
+3. 進入 **Build > Firestore Database**，點擊「建立資料庫」，**選擇「生產模式」（Production mode）**，避免資料庫對外完全開放讀寫
+4. 建立後，在 Firestore **規則** 頁面設定最低限度的安全規則，例如：
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /ratings/{doc} {
+         allow write: if request.auth != null;
+         allow read: if request.auth != null;
+       }
+     }
+   }
+   ```
+   此規則僅允許已登入（含匿名登入）的使用者讀寫，防止未登入者直接存取。
+5. 進入 **Build > Authentication**，在 Sign-in method 中開啟「**匿名 (Anonymous)**」登入
+6. 在「**專案設定 > 一般**」下方找到 SDK 設定，複製 `firebaseConfig` 物件的值
+7. 開啟 `src/App.jsx`，將 `firebaseConfig` 中的 placeholder 替換為您的實際設定值
 
 ### Step 3：設定 Gemini API Key
 
