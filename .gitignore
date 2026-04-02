@@ -1,0 +1,21 @@
+# 依賴套件（不納入版控）
+node_modules/
+
+# 打包產物
+build/
+
+# 敏感設定（請勿上傳真實 Key）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# npm / yarn 錯誤日誌
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 系統檔案
+.DS_Store
+Thumbs.db
