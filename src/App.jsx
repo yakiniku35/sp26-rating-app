@@ -5,13 +5,22 @@ import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
+// const firebaseConfig = {
+//   apiKey: 'YOUR_FIREBASE_API_KEY',
+//   authDomain: 'YOUR_PROJECT.firebaseapp.com',
+//   projectId: 'YOUR_PROJECT_ID',
+//   storageBucket: 'YOUR_PROJECT.appspot.com',
+//   messagingSenderId: 'YOUR_SENDER_ID',
+//   appId: 'YOUR_APP_ID',
+// };
+
 const firebaseConfig = {
-  apiKey: 'YOUR_FIREBASE_API_KEY',
-  authDomain: 'YOUR_PROJECT.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
