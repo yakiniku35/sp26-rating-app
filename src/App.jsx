@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
@@ -21,11 +22,16 @@ const firebaseConfig = {
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
 
 const app = initializeApp(firebaseConfig);
+// Firebase Analytics 需要 `measurementId`，避免未設定時初始化失敗
+if (firebaseConfig.measurementId) {
+  getAnalytics(app);
+}
 const db = getFirestore(app);
 const auth = getAuth(app);
 
