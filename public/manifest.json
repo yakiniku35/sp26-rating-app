@@ -1,0 +1,9 @@
+{
+  "short_name": "SP26 評分",
+  "name": "SP26 成果發表會 AI 評分系統",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1a73e8",
+  "background_color": "#f0f4f8"
+}

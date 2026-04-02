@@ -1,0 +1,1020 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import {
+  Star,
+  Send,
+  BarChart3,
+  Sparkles,
+  ChevronDown,
+  X,
+  Trophy,
+  CheckCircle,
+} from 'lucide-react';
+
+/* ============================================================
+   Firebase 設定（請替換為您的實際設定值）
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: 'YOUR_FIREBASE_API_KEY',
+  authDomain: 'YOUR_PROJECT.firebaseapp.com',
+  projectId: 'YOUR_PROJECT_ID',
+  storageBucket: 'YOUR_PROJECT.appspot.com',
+  messagingSenderId: 'YOUR_SENDER_ID',
+  appId: 'YOUR_APP_ID',
+};
+
+/* Gemini API Key（建議透過環境變數設定） */
+const GEMINI_API_KEY =
+  process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
+
+/* ============================================================
+   初始化 Firebase
+   ============================================================ */
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ============================================================
+   教室與報告資料
+   ============================================================ */
+const ROOMS = [
+  {
+    id: 'A646',
+    name: 'A646 陸美強老師講座',
+    theme: '地緣政治、軍事戰略、政策、修復',
+    presentations: [
+      {
+        session: 'S1',
+        time: '10:05-10:20',
+        presenter: '台煜昆 Walker',
+        topic: '財團法人國策研究院文教基金會─臺灣政府如何維持現狀',
+      },
+      {
+        session: 'S1',
+        time: '10:20-10:35',
+        presenter: '宋持暐 Priyanka',
+        topic:
+          '2016年政黨輪替後民進黨與國民黨兩岸政策的差異性：國家認同與戰略思維的比較',
+      },
+      {
+        session: 'S1',
+        time: '10:35-10:50',
+        presenter: '羅福山 Sean',
+        topic: '美國科技巨頭對政府決策之影響及其對業的利弊',
+      },
+      {
+        session: 'S1',
+        time: '10:50-11:05',
+        presenter: '蘇暐瑀 Sophia',
+        topic: '臺灣海峽灰色地帶行動之研究：以海上圍繞與靈擊基礎設施為核心',
+      },
+      {
+        session: 'S2',
+        time: '11:15-11:30',
+        presenter: '英甍 Cyrus',
+        topic: '臺灣勞動基準法對加班的影響',
+      },
+      {
+        session: 'S2',
+        time: '11:30-11:45',
+        presenter: '郭晟鑫 Amy',
+        topic: '美國關稅政策對臺灣農漁產品出口影響之分析',
+      },
+      {
+        session: 'S2',
+        time: '11:45-12:00',
+        presenter: '游迎帆 Katelynn',
+        topic: '中國「數字絲綢之路」佈繩對臺灣的影響',
+      },
+      {
+        session: 'S2',
+        time: '12:00-12:15',
+        presenter: '何純明',
+        topic: '伊朗聽軍的原因與影響',
+      },
+      {
+        session: 'S3',
+        time: '13:50-14:05',
+        presenter: '台煜昆 Walker',
+        topic: '反送中之後香港的影虹灣',
+      },
+      {
+        session: 'S3',
+        time: '14:05-14:20',
+        presenter: '馬麗莎 Alyssa',
+        topic: '臺灣的城市外交-以臺北為例',
+      },
+      {
+        session: 'S3',
+        time: '14:20-14:35',
+        presenter: '白毓樊 Emily',
+        topic: '中國在拉丁美洲的雙重角色基礎建設、以及軍事近五年的宏觀策略為例',
+      },
+      {
+        session: 'S4',
+        time: '14:45-15:00',
+        presenter: '英甍 Cyrus',
+        topic: '基石智庫─金融資料分析總經',
+      },
+      {
+        session: 'S4',
+        time: '15:00-15:15',
+        presenter: '賀新 Jaden',
+        topic: '虛假訊息對臺灣國際基礎設施的威脅',
+      },
+      {
+        session: 'S4',
+        time: '15:15-15:30',
+        presenter: '麥世尊 Sean',
+        topic: '臺灣半總統制的理論與現實：從制度設計到政治運作的辯真分析',
+      },
+    ],
+  },
+  {
+    id: 'A604',
+    name: 'A604 信義教室',
+    theme: '心理、醫療、人文藝析、行為分析',
+    presentations: [
+      {
+        session: 'S1',
+        time: '10:05-10:20',
+        presenter: '林小夏 Sage',
+        topic: '黑田祝整合有限公司─人界關係與小型組織計公司的重要性',
+      },
+      {
+        session: 'S1',
+        time: '10:20-10:35',
+        presenter: '冠麗莎 Larissa',
+        topic: '自閉症患者社交偽裝對心理健康的影響',
+      },
+      {
+        session: 'S1',
+        time: '10:35-10:50',
+        presenter: '華美珍',
+        topic: '自閉症兒童的學習過程',
+      },
+      {
+        session: 'S1',
+        time: '10:50-11:05',
+        presenter: '竹圃 Julia',
+        topic: '臺美大學生理財行為的比較',
+      },
+      {
+        session: 'S2',
+        time: '11:15-11:30',
+        presenter: '柯海琳 Kailyn',
+        topic: '城鄉差距與臺灣雙語教育成效之關聯',
+      },
+      {
+        session: 'S2',
+        time: '11:30-11:45',
+        presenter: '江雨川 Emma',
+        topic: '小腦體質對 ASD/ADHD 學生情緒調節與人際互動之影響',
+      },
+      {
+        session: 'S2',
+        time: '11:45-12:00',
+        presenter: '郭芭達 Gilda',
+        topic: 'A 語音合成中的「口音」與「偏見」',
+      },
+      {
+        session: 'S2',
+        time: '12:00-12:15',
+        presenter: '宋安妮 Annie',
+        topic: '以代理式人工智慧建模射程式讓物預售系統：以消費民認購情境為例',
+      },
+      {
+        session: 'S3',
+        time: '13:50-14:05',
+        presenter: '冠麗莎 Larissa',
+        topic: '社團中華民國自閉症總會─自閉症患者在職場的清潔策略',
+      },
+      {
+        session: 'S3',
+        time: '14:05-14:20',
+        presenter: '楊子慧 Elizabeth',
+        topic: '臺灣的原住民語言復興問題',
+      },
+      {
+        session: 'S3',
+        time: '14:20-14:35',
+        presenter: '貝寶 Beyza',
+        topic: '臺灣原住民如何使用藝術維持文化抵抗異保留',
+      },
+      {
+        session: 'S4',
+        time: '14:45-15:00',
+        presenter: '柯海琳 Kailyn',
+        topic: '博物館作為第二教室─故宮博物館的教育功能探討',
+      },
+      {
+        session: 'S4',
+        time: '15:00-15:15',
+        presenter: '郭端照 Gwendolyn',
+        topic: '走過青銅時代「秘列克斯頓」的古代煉基',
+      },
+      {
+        session: 'S4',
+        time: '15:15-15:30',
+        presenter: '林小夏 Sage',
+        topic: '比較臺美字型創作與產業概況',
+      },
+    ],
+  },
+  {
+    id: 'A605',
+    name: 'A605 信義教室',
+    theme: 'AI、軟體、半導體、醫療、資安、環境',
+    presentations: [
+      {
+        session: '',
+        time: '',
+        presenter: '彭毅 Brandon',
+        topic: '網路安全：無聲的守護者',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '楊怡珠 Emma',
+        topic: '非英語母語者學習編程的挑戰',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '福慧芳 Emily',
+        topic: '知己知彼：孫子兵法在網絡防禦中的運用',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '徐芯怡 Katherine',
+        topic: '國立陽明交通大學─醫療影像(X射線/胸部X光)在軟體開發中的屏蔽機制',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '何安娜 Anashelly',
+        topic: '衰老對疫苗免疫反應的影響',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '冉嫺蕊 Carolyn',
+        topic: '臺灣的垃圾管理制度',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '金蓮 Tegan',
+        topic: '人工智能對於計畫產業的影響',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '謝劍樺',
+        topic: '心得分享─《淺談 AI 原廠潛下企業營業祕密保護因應對策》',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '徐芯怡 Katherine',
+        topic: '美國與臺灣醫療制度的比較-以腎尿疾為例',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '羅堆山 Sean',
+        topic: '工業技術研究院─防禦科技產業供應鏈的全球化',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '鄧圓瑀 Sophia',
+        topic: '工業技術研究院─防禦科技產業供應鏈的全球化',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '曾彭揚 Brooklyn',
+        topic: 'AI 與自主機器人在半導體對於高業中的應用：機械工程師角色的轉變',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '楊怡珠 Emma',
+        topic: '啟迁資訊股份有公司─共享剪接/廣告作文在軟體開發中的重要性',
+      },
+      {
+        session: '',
+        time: '',
+        presenter: '郭晟鑫 Amy',
+        topic: '臺灣金融科技─人工智慧在投資顧問流程中的應用',
+      },
+    ],
+  },
+];
+
+/* ============================================================
+   評分項目定義
+   ============================================================ */
+const SCORE_ITEMS = [
+  { key: 'professionalism', label: '內容專業度', emoji: '📚' },
+  { key: 'fluency', label: '表達流暢度', emoji: '🎤' },
+  { key: 'visual', label: '視覺設計感', emoji: '🎨' },
+  { key: 'inspiration', label: '整體啟發性', emoji: '💡' },
+];
+
+/* ============================================================
+   工具函數：呼叫 Gemini API 產生評語
+   ============================================================ */
+async function generateAIComment(topic, scores) {
+  const prompt = `這位學生報告的題目是「${topic}」，觀眾給的評分為：內容專業度 ${scores.professionalism}/10、表達流暢度 ${scores.fluency}/10、視覺設計感 ${scores.visual}/10、整體啟發性 ${scores.inspiration}/10。請用繁體中文寫一段 50 字以內、溫暖鼓勵的評語。`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Gemini API 呼叫失敗');
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '謝謝您精彩的分享！';
+}
+
+/* ============================================================
+   樣式常數
+   ============================================================ */
+const styles = {
+  /* 全頁容器 */
+  app: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #e8f0fe 0%, #f0f4f8 50%, #e8f4fd 100%)',
+    fontFamily: "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif",
+  },
+  /* Header */
+  header: {
+    background: 'linear-gradient(90deg, #1a73e8 0%, #0d47a1 100%)',
+    color: '#fff',
+    padding: '16px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    boxShadow: '0 2px 8px rgba(26,115,232,0.4)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+  },
+  headerTitle: {
+    fontSize: '1.2rem',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+  },
+  headerSub: {
+    fontSize: '0.75rem',
+    opacity: 0.85,
+    marginTop: 2,
+  },
+  headerBtn: {
+    background: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    borderRadius: 8,
+    color: '#fff',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: '0.85rem',
+    transition: 'background 0.2s',
+  },
+  /* 主內容 */
+  main: {
+    maxWidth: 640,
+    margin: '0 auto',
+    padding: '20px 16px 60px',
+  },
+  /* 卡片 */
+  card: {
+    background: '#fff',
+    borderRadius: 16,
+    boxShadow: '0 2px 16px rgba(0,0,0,0.08)',
+    padding: '20px',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: '1rem',
+    fontWeight: 700,
+    color: '#1a237e',
+    marginBottom: 14,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  /* 選單 */
+  select: {
+    width: '100%',
+    padding: '12px 14px',
+    border: '2px solid #e0e7ff',
+    borderRadius: 10,
+    fontSize: '0.95rem',
+    color: '#333',
+    background: '#fff',
+    appearance: 'none',
+    backgroundImage:
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a73e8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 12px center',
+    cursor: 'pointer',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    marginBottom: 10,
+  },
+  /* 分數列 */
+  scoreRow: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 12,
+  },
+  scoreLabel: {
+    fontSize: '0.9rem',
+    color: '#444',
+    width: 100,
+    flexShrink: 0,
+  },
+  scoreButtons: {
+    display: 'flex',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  scoreBtn: (active) => ({
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    border: active ? '2px solid #1a73e8' : '2px solid #e0e7ff',
+    background: active
+      ? 'linear-gradient(135deg, #1a73e8, #0d47a1)'
+      : '#f5f8ff',
+    color: active ? '#fff' : '#666',
+    fontSize: '0.85rem',
+    fontWeight: active ? 700 : 400,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }),
+  /* 文字輸入 */
+  textarea: {
+    width: '100%',
+    padding: '12px',
+    border: '2px solid #e0e7ff',
+    borderRadius: 10,
+    fontSize: '0.95rem',
+    resize: 'vertical',
+    minHeight: 80,
+    outline: 'none',
+    fontFamily: 'inherit',
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
+  },
+  /* 按鈕 */
+  primaryBtn: {
+    width: '100%',
+    padding: '14px',
+    background: 'linear-gradient(90deg, #1a73e8 0%, #0d47a1 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 12,
+    fontSize: '1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    transition: 'opacity 0.2s, transform 0.1s',
+    marginTop: 8,
+  },
+  aiBtn: {
+    padding: '10px 16px',
+    background: 'linear-gradient(90deg, #7c4dff, #e040fb)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 10,
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    transition: 'opacity 0.2s',
+  },
+  /* Toast 通知 */
+  toast: (show) => ({
+    position: 'fixed',
+    bottom: 24,
+    left: '50%',
+    transform: show ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(100px)',
+    background: '#1b5e20',
+    color: '#fff',
+    padding: '14px 24px',
+    borderRadius: 12,
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+    transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  }),
+  /* Modal 排行榜 */
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  modal: {
+    background: '#fff',
+    borderRadius: '20px 20px 0 0',
+    padding: '24px 20px',
+    width: '100%',
+    maxWidth: 640,
+    maxHeight: '80vh',
+    overflowY: 'auto',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: '#1a237e',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankItem: (rank) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px',
+    borderRadius: 10,
+    marginBottom: 8,
+    background: rank === 1 ? '#fff8e1' : rank === 2 ? '#f5f5f5' : rank === 3 ? '#fbe9e7' : '#fafafa',
+    border: rank === 1 ? '1px solid #ffc107' : '1px solid #eee',
+  }),
+  rankNum: (rank) => ({
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    background: rank === 1 ? '#ffc107' : rank === 2 ? '#9e9e9e' : rank === 3 ? '#ff7043' : '#e0e0e0',
+    color: rank <= 3 ? '#fff' : '#666',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    flexShrink: 0,
+  }),
+  /* 底部 */
+  footer: {
+    textAlign: 'center',
+    color: '#9e9e9e',
+    fontSize: '0.75rem',
+    marginTop: 32,
+  },
+};
+
+/* ============================================================
+   主要 App 元件
+   ============================================================ */
+export default function App() {
+  /* --- 狀態 --- */
+  const [userId, setUserId] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState('');
+  const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
+  const [scores, setScores] = useState({
+    professionalism: 0,
+    fluency: 0,
+    visual: 0,
+    inspiration: 0,
+  });
+  const [comment, setComment] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  /* --- Firebase 匿名登入 --- */
+  useEffect(() => {
+    signInAnonymously(auth)
+      .then((cred) => setUserId(cred.user.uid))
+      .catch((err) => console.error('匿名登入失敗：', err));
+  }, []);
+
+  /* --- 取得目前教室資料 --- */
+  const currentRoom = ROOMS.find((r) => r.id === selectedRoom);
+  const currentPresentation =
+    currentRoom && selectedPresentationIdx !== ''
+      ? currentRoom.presentations[parseInt(selectedPresentationIdx, 10)]
+      : null;
+
+  /* --- AI 產生評語 --- */
+  const handleGenerateAI = useCallback(async () => {
+    if (!currentPresentation) return;
+    const allScored = Object.values(scores).every((v) => v > 0);
+    if (!allScored) {
+      alert('請先完成 4 項評分，再產生 AI 評語');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const text = await generateAIComment(currentPresentation.topic, scores);
+      setComment(text);
+    } catch (err) {
+      alert('AI 評語產生失敗，請確認 Gemini API Key 是否正確。');
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [currentPresentation, scores]);
+
+  /* --- 提交評分 --- */
+  const handleSubmit = useCallback(async () => {
+    if (!currentPresentation) {
+      alert('請先選擇報告者');
+      return;
+    }
+    const allScored = Object.values(scores).every((v) => v > 0);
+    if (!allScored) {
+      alert('請完成所有 4 項評分');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, 'ratings'), {
+        roomId: selectedRoom,
+        presenter: currentPresentation.presenter,
+        topic: currentPresentation.topic,
+        session: currentPresentation.session,
+        scores,
+        comment,
+        timestamp: serverTimestamp(),
+        anonymousUserId: userId,
+      });
+
+      /* 重置表單 */
+      setScores({ professionalism: 0, fluency: 0, visual: 0, inspiration: 0 });
+      setComment('');
+      setSelectedPresentationIdx('');
+
+      /* 顯示 Toast */
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      alert('提交失敗，請稍後再試。');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [currentPresentation, scores, comment, selectedRoom, userId]);
+
+  /* --- 讀取排行榜 --- */
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const snapshot = await getDocs(collection(db, 'ratings'));
+      const map = {};
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        const key = `${d.roomId}||${d.presenter}||${d.topic}`;
+        if (!map[key]) {
+          map[key] = { roomId: d.roomId, presenter: d.presenter, topic: d.topic, total: 0, count: 0 };
+        }
+        const avg =
+          (d.scores.professionalism +
+            d.scores.fluency +
+            d.scores.visual +
+            d.scores.inspiration) /
+          4;
+        map[key].total += avg;
+        map[key].count += 1;
+      });
+
+      const list = Object.values(map).map((item) => ({
+        ...item,
+        average: item.total / item.count,
+      }));
+      list.sort((a, b) => b.average - a.average);
+      setLeaderboardData(list);
+    } catch (err) {
+      console.error('讀取排行榜失敗：', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, []);
+
+  const handleOpenLeaderboard = () => {
+    setShowLeaderboard(true);
+    fetchLeaderboard();
+  };
+
+  /* ============================================================
+     渲染
+     ============================================================ */
+  return (
+    <div style={styles.app}>
+      {/* ── Header ── */}
+      <header style={styles.header}>
+        <div>
+          <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
+          <div style={styles.headerSub}>AI 智慧評分系統</div>
+        </div>
+        <button style={styles.headerBtn} onClick={handleOpenLeaderboard}>
+          <BarChart3 size={16} />
+          排行榜
+        </button>
+      </header>
+
+      {/* ── 主內容 ── */}
+      <main style={styles.main}>
+
+        {/* 選擇教室與報告 */}
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            <ChevronDown size={18} color="#1a73e8" />
+            選擇教室與報告
+          </div>
+
+          {/* 教室選單 */}
+          <select
+            style={styles.select}
+            value={selectedRoom}
+            onChange={(e) => {
+              setSelectedRoom(e.target.value);
+              setSelectedPresentationIdx('');
+            }}
+          >
+            <option value="">── 請選擇教室 ──</option>
+            {ROOMS.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </select>
+
+          {/* 教室主題說明 */}
+          {currentRoom && (
+            <div
+              style={{
+                fontSize: '0.8rem',
+                color: '#1a73e8',
+                background: '#e8f0fe',
+                padding: '8px 12px',
+                borderRadius: 8,
+                marginBottom: 10,
+              }}
+            >
+              📌 主題：{currentRoom.theme}
+            </div>
+          )}
+
+          {/* 報告者選單 */}
+          {currentRoom && (
+            <select
+              style={styles.select}
+              value={selectedPresentationIdx}
+              onChange={(e) => setSelectedPresentationIdx(e.target.value)}
+            >
+              <option value="">── 請選擇報告者 ──</option>
+              {currentRoom.presentations.map((p, idx) => (
+                <option key={idx} value={idx}>
+                  {p.session ? `[${p.session}${p.time ? ' ' + p.time : ''}] ` : ''}
+                  {p.presenter} — {p.topic.length > 20 ? p.topic.slice(0, 20) + '…' : p.topic}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* 顯示完整題目 */}
+          {currentPresentation && (
+            <div
+              style={{
+                fontSize: '0.85rem',
+                color: '#333',
+                background: '#f5f8ff',
+                padding: '10px 14px',
+                borderRadius: 8,
+                lineHeight: 1.6,
+                marginTop: 4,
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{currentPresentation.presenter}</span>
+              <br />
+              {currentPresentation.topic}
+            </div>
+          )}
+        </div>
+
+        {/* 評分區塊 */}
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            <Star size={18} color="#f59e0b" fill="#f59e0b" />
+            評分項目（1–10 分）
+          </div>
+
+          {SCORE_ITEMS.map((item) => (
+            <div key={item.key} style={styles.scoreRow}>
+              <div style={styles.scoreLabel}>
+                {item.emoji} {item.label}
+              </div>
+              <div style={styles.scoreButtons}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <button
+                    key={n}
+                    style={styles.scoreBtn(scores[item.key] === n)}
+                    onClick={() =>
+                      setScores((prev) => ({ ...prev, [item.key]: n }))
+                    }
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 文字回饋區塊 */}
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            <Sparkles size={18} color="#7c4dff" />
+            一句話回饋
+          </div>
+          <textarea
+            style={styles.textarea}
+            placeholder="寫下您對這場報告的一句話回饋…"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+            onBlur={(e) => (e.target.style.borderColor = '#e0e7ff')}
+          />
+          <button
+            style={{
+              ...styles.aiBtn,
+              opacity: aiLoading ? 0.7 : 1,
+              cursor: aiLoading ? 'not-allowed' : 'pointer',
+            }}
+            onClick={handleGenerateAI}
+            disabled={aiLoading}
+          >
+            <Sparkles size={14} />
+            {aiLoading ? 'AI 生成中…' : '✨ AI 產生評語'}
+          </button>
+        </div>
+
+        {/* 提交按鈕 */}
+        <button
+          style={{
+            ...styles.primaryBtn,
+            opacity: submitting ? 0.7 : 1,
+            cursor: submitting ? 'not-allowed' : 'pointer',
+          }}
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          <Send size={18} />
+          {submitting ? '提交中…' : '提交評分'}
+        </button>
+
+        {/* 底部資訊 */}
+        <div style={styles.footer}>
+          <p>© 2026 SP26 成果發表會 · AI 評分系統</p>
+          <p style={{ marginTop: 4 }}>Powered by React · Firebase · Gemini AI</p>
+        </div>
+      </main>
+
+      {/* ── Toast 通知 ── */}
+      <div style={styles.toast(showToast)}>
+        <CheckCircle size={18} />
+        評分已成功提交！感謝您的參與 🎉
+      </div>
+
+      {/* ── 排行榜 Modal ── */}
+      {showLeaderboard && (
+        <div style={styles.overlay} onClick={() => setShowLeaderboard(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>
+                <Trophy size={20} color="#ffc107" />
+                即時排行榜
+              </div>
+              <button
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                }}
+                onClick={() => setShowLeaderboard(false)}
+              >
+                <X size={22} color="#666" />
+              </button>
+            </div>
+
+            {leaderboardLoading ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                載入中…
+              </div>
+            ) : leaderboardData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                目前尚無評分資料
+              </div>
+            ) : (
+              leaderboardData.map((item, idx) => {
+                const rank = idx + 1;
+                const room = ROOMS.find((r) => r.id === item.roomId);
+                return (
+                  <div key={idx} style={styles.rankItem(rank)}>
+                    <div style={styles.rankNum(rank)}>{rank}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                          color: '#222',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {item.presenter}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          color: '#666',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {room?.name} ·{' '}
+                        {item.topic.length > 18
+                          ? item.topic.slice(0, 18) + '…'
+                          : item.topic}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '1.1rem',
+                          color: '#1a73e8',
+                        }}
+                      >
+                        {item.average.toFixed(1)}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#999' }}>
+                        {item.count} 票
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
