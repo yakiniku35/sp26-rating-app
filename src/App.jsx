@@ -371,6 +371,7 @@ export default function App() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
   const [presentationDrafts, setPresentationDrafts] = useState({});
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -516,6 +517,7 @@ export default function App() {
           session: presentation.session,
           scores: draft.scores,
           comment: draft.comment,
+      
           timestamp: serverTimestamp(),
           anonymousUserId: userId,
         });
@@ -536,6 +538,51 @@ export default function App() {
     },
     [getDraft, selectedRoom, updateDraft, userId]
   );
+
+  const handleSubmitAllPresentations = useCallback(async () => {
+    if (!currentRoom) return;
+
+    const validItems = currentRoom.presentations
+      .map((presentation, idx) => ({ presentation, idx, draft: getDraft(idx) }))
+      .filter(({ draft }) => Object.values(draft.scores).every((v) => v > 0));
+
+    if (validItems.length === 0) {
+      alert('尚未有可提交的完整評分（需完成 4 項分數）');
+      return;
+    }
+
+    setBulkSubmitting(true);
+    try {
+      for (const item of validItems) {
+        const { presentation, idx, draft } = item;
+        await addDoc(collection(db, 'ratings'), {
+          roomId: selectedRoom,
+          presenter: presentation.presenter,
+          topic: presentation.topic,
+          session: presentation.session,
+          scores: draft.scores,
+          comment: draft.comment,
+          timestamp: serverTimestamp(),
+          anonymousUserId: userId,
+        });
+        updateDraft(idx, (prev) => ({
+          ...prev,
+          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+          comment: '',
+          submitting: false,
+        }));
+      }
+
+      alert(`已成功一鍵提交 ${validItems.length} 筆評分`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      console.error('一鍵提交失敗：', err);
+      alert('一鍵提交失敗，請稍後再試');
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }, [currentRoom, getDraft, selectedRoom, updateDraft, userId]);
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -761,6 +808,23 @@ export default function App() {
             <div style={{ fontSize: '0.8rem', color: '#1565c0', background: '#e3f2fd', padding: '8px 12px', borderRadius: 8, marginTop: 6 }}>
               已展開此教室全部評分表，共 {currentRoom.presentations.length} 位同學
             </div>
+          )}
+
+          {currentRoom && (
+            <button
+              style={{
+                ...styles.primaryBtn,
+                marginTop: 10,
+                marginBottom: 0,
+                opacity: bulkSubmitting ? 0.7 : 1,
+                cursor: bulkSubmitting ? 'not-allowed' : 'pointer',
+              }}
+              onClick={handleSubmitAllPresentations}
+              disabled={bulkSubmitting}
+            >
+              <Send size={18} />
+              {bulkSubmitting ? '一鍵提交中…' : '一鍵全部提交（已填完者）'}
+            </button>
           )}
         </div>
 
