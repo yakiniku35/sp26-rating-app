@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download } from 'lucide-react';
@@ -660,6 +660,36 @@ export default function App() {
     }
   };
 
+  const handleAdminScoreAction = async (rating, action) => {
+    try {
+      const currentScores = rating.scores || {};
+      const nextScores = {
+        professionalism: currentScores.professionalism ?? 0,
+        fluency: currentScores.fluency ?? 0,
+        visual: currentScores.visual ?? 0,
+        inspiration: currentScores.inspiration ?? 0,
+      };
+
+      if (action === 'reset') {
+        nextScores.professionalism = 0;
+        nextScores.fluency = 0;
+        nextScores.visual = 0;
+        nextScores.inspiration = 0;
+      } else {
+        const delta = action === 'inc' ? 1 : -1;
+        nextScores.professionalism = Math.max(0, Math.min(10, nextScores.professionalism + delta));
+        nextScores.fluency = Math.max(0, Math.min(10, nextScores.fluency + delta));
+        nextScores.visual = Math.max(0, Math.min(10, nextScores.visual + delta));
+        nextScores.inspiration = Math.max(0, Math.min(10, nextScores.inspiration + delta));
+      }
+
+      await updateDoc(doc(db, 'ratings', rating.id), { scores: nextScores });
+    } catch (err) {
+      console.error('管理員調整分數失敗：', err);
+      alert('調整分數失敗，請稍後再試');
+    }
+  };
+
   return (
     <div style={styles.app}>
       <header style={styles.header}>
@@ -921,6 +951,7 @@ export default function App() {
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>視覺</th>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>啟發</th>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>回饋</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>分數管理</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -944,6 +975,32 @@ export default function App() {
                             <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.visual}</td>
                             <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.inspiration}</td>
                             <td style={{ padding: '6px 6px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
+                            <td style={{ padding: '6px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleAdminScoreAction(r, 'inc')}
+                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                              >
+                                +1
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAdminScoreAction(r, 'dec')}
+                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                              >
+                                -1
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!window.confirm('確定要把這筆投票四項分數全部重置為 0 嗎？')) return;
+                                  handleAdminScoreAction(r, 'reset');
+                                }}
+                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                              >
+                                重置
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
