@@ -640,8 +640,10 @@ export default function App() {
           .join(',');
       });
 
+      // 加上 UTF-8 BOM，避免 Excel 開啟中文亂碼
       const csvContent = [headers.join(','), ...rows].join('\r\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const csvWithBom = `\uFEFF${csvContent}`;
+      const blob = new Blob([csvWithBom], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
