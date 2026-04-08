@@ -27,6 +27,10 @@ const firebaseConfig = {
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
 
+// 管理員登入帳號密碼（可改成環境變數）
+const ADMIN_USERNAME = process.env.REACT_APP_ADMIN_USER || 'admin';
+const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASS || 'sp26admin';
+
 const app = initializeApp(firebaseConfig);
 // Firebase Analytics 需要 `measurementId`，避免未設定時初始化失敗
 if (firebaseConfig.measurementId) {
@@ -376,6 +380,7 @@ export default function App() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
   const [adminRatings, setAdminRatings] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
@@ -538,7 +543,22 @@ export default function App() {
   }, [showLeaderboard]);
 
   const handleOpenLeaderboard = () => setShowLeaderboard(true);
-  const handleOpenAdmin = () => setShowAdmin(true);
+  const handleOpenAdmin = () => {
+    if (!adminLoggedIn) {
+      const username = window.prompt('請輸入管理員帳號：', '');
+      if (username == null) return;
+      const password = window.prompt('請輸入管理員密碼：', '');
+      if (password == null) return;
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        setAdminLoggedIn(true);
+        setShowAdmin(true);
+      } else {
+        alert('帳號或密碼錯誤');
+      }
+    } else {
+      setShowAdmin(true);
+    }
+  };
 
   // 管理員：Dashboard - 監聽所有評分紀錄
   useEffect(() => {
