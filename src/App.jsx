@@ -363,6 +363,7 @@ const styles = {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
+  const [rooms, setRooms] = useState(ROOMS);
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
@@ -427,35 +428,31 @@ export default function App() {
   useEffect(() => {
     if (!showAdmin) return;
 
-    const unsub = onSnapshot(
-      collection(db, 'onlineUsers'),
-      (snapshot) => {
-        const now = Date.now();
-        let count = 0;
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const ts = data.lastActive;
-          if (ts && typeof ts.toMillis === 'function') {
-            const diff = now - ts.toMillis();
-            if (diff < 60000) {
-              count += 1;
-            }
-          } else {
-            // 若 timestamp 還沒同步回來，先暫時算在線
+    const unsub = onSnapshot(collection(db, 'onlineUsers'), (snapshot) => {
+      const now = Date.now();
+      let count = 0;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const ts = data.lastActive;
+        if (ts && typeof ts.toMillis === 'function') {
+          const diff = now - ts.toMillis();
+          if (diff < 60000) {
             count += 1;
           }
-        });
-        setOnlineCount(count);
-      },
-      (err) => {
-        console.error('讀取線上人數失敗：', err);
-      }
-    );
+        } else {
+          // 若 timestamp 還沒同步回來，先暫時算在線
+          count += 1;
+        }
+      });
+      setOnlineCount(count);
+    }, (err) => {
+      console.error('讀取線上人數失敗：', err);
+    });
 
     return () => unsub();
   }, [showAdmin]);
 
-  const currentRoom = ROOMS.find((r) => r.id === selectedRoom);
+  const currentRoom = rooms.find((r) => r.id === selectedRoom);
   const currentPresentation =
     currentRoom && selectedPresentationIdx !== ''
       ? currentRoom.presentations[parseInt(selectedPresentationIdx, 10)]
@@ -597,7 +594,7 @@ export default function App() {
       ];
 
       const rows = adminRatings.map((r) => {
-        const room = ROOMS.find((x) => x.id === r.roomId);
+        const room = rooms.find((x) => x.id === r.roomId);
         const ts =
           r.timestamp && typeof r.timestamp.toDate === 'function'
             ? r.timestamp.toDate().toISOString()
@@ -676,7 +673,7 @@ export default function App() {
             }}
           >
             <option value="">── 請選擇教室 ──</option>
-            {ROOMS.map((room) => (
+            {rooms.map((room) => (
               <option key={room.id} value={room.id}>{room.name}</option>
             ))}
           </select>
@@ -803,7 +800,7 @@ export default function App() {
             ) : (
               leaderboardData.map((item, idx) => {
                 const rank = idx + 1;
-                const room = ROOMS.find((r) => r.id === item.roomId);
+                const room = rooms.find((r) => r.id === item.roomId);
                 return (
                   <div key={idx} style={styles.rankItem(rank)}>
                     <div style={styles.rankNum(rank)}>{rank}</div>
@@ -906,7 +903,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {adminRatings.map((r) => {
-                        const room = ROOMS.find((x) => x.id === r.roomId);
+                        const room = rooms.find((x) => x.id === r.roomId);
                         const ts =
                           r.timestamp && typeof r.timestamp.toDate === 'function'
                             ? r.timestamp.toDate()
@@ -935,26 +932,128 @@ export default function App() {
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <Table2 size={16} color="#5e35b1" />
-                課程與老師一覽（目前為只讀）
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Table2 size={16} color="#5e35b1" />
+                  課程與老師管理
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
               </div>
-              <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: 10, fontSize: '0.8rem' }}>
-                {ROOMS.map((room) => (
-                  <div key={room.id} style={{ marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, color: '#1a237e', marginBottom: 4 }}>
-                      {room.name}（{room.id}）
+              <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: 10, fontSize: '0.8rem' }}>
+                {rooms.map((room) => (
+                  <div key={room.id} style={{ marginBottom: 10, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1a237e' }}>
+                          {room.name}（{room.id}）
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>主題：{room.theme}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          style={{ border: '1px solid #5e35b1', background: '#fff', color: '#5e35b1', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => {
+                            const newName = window.prompt('請輸入教室名稱', room.name);
+                            if (newName == null || newName.trim() === '') return;
+                            const newTheme = window.prompt('請輸入主題', room.theme);
+                            if (newTheme == null || newTheme.trim() === '') return;
+                            setRooms((prev) =>
+                              prev.map((r) =>
+                                r.id === room.id ? { ...r, name: newName.trim(), theme: newTheme.trim() } : r
+                              )
+                            );
+                          }}
+                        >
+                          編輯教室
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#555', marginBottom: 4 }}>主題：{room.theme}</div>
-                    <div>
+                    <div style={{ marginTop: 4 }}>
                       {room.presentations.map((p, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 6, fontSize: '0.75rem', marginBottom: 2 }}>
-                          <span style={{ color: '#999', minWidth: 60 }}>{p.session || '-'}</span>
-                          <span style={{ color: '#999', minWidth: 80 }}>{p.time || ''}</span>
-                          <span style={{ minWidth: 100 }}>{p.presenter}</span>
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', marginBottom: 2 }}>
+                          <span style={{ color: '#999', minWidth: 50 }}>{p.session || '-'}</span>
+                          <span style={{ color: '#999', minWidth: 70 }}>{p.time || ''}</span>
+                          <span style={{ minWidth: 90 }}>{p.presenter}</span>
                           <span style={{ flex: 1 }}>{p.topic}</span>
+                          <button
+                            type="button"
+                            style={{ border: '1px solid #90caf9', background: '#e3f2fd', color: '#1565c0', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                            onClick={() => {
+                              const session = window.prompt('場次（例如 S1）', p.session || '');
+                              if (session == null) return;
+                              const time = window.prompt('時間（例如 10:05-10:20）', p.time || '');
+                              if (time == null) return;
+                              const presenter = window.prompt('報告者 / 老師姓名', p.presenter || '');
+                              if (presenter == null || presenter.trim() === '') return;
+                              const topic = window.prompt('題目', p.topic || '');
+                              if (topic == null || topic.trim() === '') return;
+                              setRooms((prev) =>
+                                prev.map((r) =>
+                                  r.id === room.id
+                                    ? {
+                                        ...r,
+                                        presentations: r.presentations.map((pp, i) =>
+                                          i === idx ? { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() } : pp
+                                        ),
+                                      }
+                                    : r
+                                )
+                              );
+                            }}
+                          >
+                            編輯
+                          </button>
+                          <button
+                            type="button"
+                            style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                            onClick={() => {
+                              if (!window.confirm('確定要刪除這筆報告嗎？')) return;
+                              setRooms((prev) =>
+                                prev.map((r) =>
+                                  r.id === room.id
+                                    ? {
+                                        ...r,
+                                        presentations: r.presentations.filter((_, i) => i !== idx),
+                                      }
+                                    : r
+                                )
+                              );
+                            }}
+                          >
+                            刪除
+                          </button>
                         </div>
                       ))}
+                      <button
+                        type="button"
+                        style={{ marginTop: 4, border: '1px dashed #4caf50', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: '2px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
+                        onClick={() => {
+                          const session = window.prompt('場次（例如 S1）', '');
+                          if (session == null) return;
+                          const time = window.prompt('時間（例如 10:05-10:20）', '');
+                          if (time == null) return;
+                          const presenter = window.prompt('報告者 / 老師姓名', '');
+                          if (presenter == null || presenter.trim() === '') return;
+                          const topic = window.prompt('題目', '');
+                          if (topic == null || topic.trim() === '') return;
+                          setRooms((prev) =>
+                            prev.map((r) =>
+                              r.id === room.id
+                                ? {
+                                    ...r,
+                                    presentations: [
+                                      ...r.presentations,
+                                      { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() },
+                                    ],
+                                  }
+                                : r
+                            )
+                          );
+                        }}
+                      >
+                        ＋ 新增報告
+                      </button>
                     </div>
                   </div>
                 ))}
