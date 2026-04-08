@@ -370,11 +370,7 @@ export default function App() {
   const [rooms, setRooms] = useState(ROOMS);
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
-  const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
-  const [scores, setScores] = useState({ professionalism: 0, fluency: 0, visual: 0, inspiration: 0 });
-  const [comment, setComment] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [presentationDrafts, setPresentationDrafts] = useState({});
   const [showToast, setShowToast] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -458,62 +454,88 @@ export default function App() {
   }, [showAdmin]);
 
   const currentRoom = rooms.find((r) => r.id === selectedRoom);
-  const currentPresentation =
-    currentRoom && selectedPresentationIdx !== ''
-      ? currentRoom.presentations[parseInt(selectedPresentationIdx, 10)]
-      : null;
 
-  const handleGenerateAI = useCallback(async () => {
-    if (!currentPresentation) return;
-    if (!Object.values(scores).every((v) => v > 0)) {
-      alert('請先完成 4 項評分，再產生 AI 評語');
-      return;
-    }
-    setAiLoading(true);
-    try {
-      const text = await generateAIComment(currentPresentation.topic, scores);
-      setComment(text);
-    } catch (err) {
-      alert('AI 評語產生失敗，請確認 Gemini API Key 是否正確。');
-      console.error(err);
-    } finally {
-      setAiLoading(false);
-    }
-  }, [currentPresentation, scores]);
+  const getDraft = useCallback(
+    (idx) =>
+      presentationDrafts[idx] || {
+        scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+        comment: '',
+        aiLoading: false,
+        submitting: false,
+      },
+    [presentationDrafts]
+  );
 
-  const handleSubmit = useCallback(async () => {
-    if (!currentPresentation) {
-      alert('請先選擇報告者');
-      return;
-    }
-    if (!Object.values(scores).every((v) => v > 0)) {
-      alert('請完成所有 4 項評分');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await addDoc(collection(db, 'ratings'), {
-        roomId: selectedRoom,
-        presenter: currentPresentation.presenter,
-        topic: currentPresentation.topic,
-        session: currentPresentation.session,
-        scores,
-        comment,
-        timestamp: serverTimestamp(),
-        anonymousUserId: userId,
-      });
-      setScores({ professionalism: 0, fluency: 0, visual: 0, inspiration: 0 });
-      setComment('');
-      setSelectedPresentationIdx('');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (err) {
-      alert('提交失敗，請稍後再試。');
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [currentPresentation, scores, comment, selectedRoom, userId]);
+  const updateDraft = useCallback((idx, updater) => {
+    setPresentationDrafts((prev) => {
+      const current =
+        prev[idx] || {
+          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+          comment: '',
+          aiLoading: false,
+          submitting: false,
+        };
+      return { ...prev, [idx]: updater(current) };
+    });
+  }, []);
+
+  const handleGenerateAIForPresentation = useCallback(
+    async (presentation, idx) => {
+      const draft = getDraft(idx);
+      if (!Object.values(draft.scores).every((v) => v > 0)) {
+        alert('請先完成 4 項評分，再產生 AI 評語');
+        return;
+      }
+      updateDraft(idx, (prev) => ({ ...prev, aiLoading: true }));
+      try {
+        const text = await generateAIComment(presentation.topic, draft.scores);
+        updateDraft(idx, (prev) => ({ ...prev, comment: text, aiLoading: false }));
+      } catch (err) {
+        alert('AI 評語產生失敗，請確認 Gemini API Key 是否正確。');
+        console.error(err);
+        updateDraft(idx, (prev) => ({ ...prev, aiLoading: false }));
+      }
+    },
+    [getDraft, updateDraft]
+  );
+
+  const handleSubmitForPresentation = useCallback(
+    async (presentation, idx) => {
+      const draft = getDraft(idx);
+      if (!Object.values(draft.scores).every((v) => v > 0)) {
+        alert('請完成所有 4 項評分');
+        return;
+      }
+
+      updateDraft(idx, (prev) => ({ ...prev, submitting: true }));
+      try {
+        await addDoc(collection(db, 'ratings'), {
+          roomId: selectedRoom,
+          presenter: presentation.presenter,
+          topic: presentation.topic,
+          session: presentation.session,
+          scores: draft.scores,
+          comment: draft.comment,
+          timestamp: serverTimestamp(),
+          anonymousUserId: userId,
+        });
+
+        updateDraft(idx, (prev) => ({
+          ...prev,
+          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+          comment: '',
+          submitting: false,
+        }));
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (err) {
+        alert('提交失敗，請稍後再試。');
+        console.error(err);
+        updateDraft(idx, (prev) => ({ ...prev, submitting: false }));
+      }
+    },
+    [getDraft, selectedRoom, updateDraft, userId]
+  );
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -721,7 +743,7 @@ export default function App() {
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
-              setSelectedPresentationIdx('');
+              setPresentationDrafts({});
             }}
           >
             <option value="">── 請選擇教室 ──</option>
@@ -735,86 +757,86 @@ export default function App() {
               📌 主題：{currentRoom.theme}
             </div>
           )}
-
           {currentRoom && (
-            <select
-              style={styles.select}
-              value={selectedPresentationIdx}
-              onChange={(e) => setSelectedPresentationIdx(e.target.value)}
-            >
-              <option value="">── 請選擇報告者 ──</option>
-              {currentRoom.presentations.map((p, idx) => (
-                <option key={idx} value={idx}>
-                  {p.session ? `[${p.session}${p.time ? ' ' + p.time : ''}] ` : ''}
-                  {p.presenter} — {p.topic.length > 20 ? p.topic.slice(0, 20) + '…' : p.topic}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {currentPresentation && (
-            <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginTop: 4 }}>
-              <span style={{ fontWeight: 600 }}>{currentPresentation.presenter}</span>
-              <br />
-              {currentPresentation.topic}
+            <div style={{ fontSize: '0.8rem', color: '#1565c0', background: '#e3f2fd', padding: '8px 12px', borderRadius: 8, marginTop: 6 }}>
+              已展開此教室全部評分表，共 {currentRoom.presentations.length} 位同學
             </div>
           )}
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>
-            <Star size={18} color="#f59e0b" fill="#f59e0b" />
-            評分項目（1–10 分）
-          </div>
-          {SCORE_ITEMS.map((item) => (
-            <div key={item.key} style={styles.scoreRow}>
-              <div style={styles.scoreLabel}>{item.emoji} {item.label}</div>
-              <div style={styles.scoreButtons}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <button
-                    key={n}
-                    style={styles.scoreBtn(scores[item.key] === n)}
-                    onClick={() => setScores((prev) => ({ ...prev, [item.key]: n }))}
-                  >
-                    {n}
-                  </button>
-                ))}
+        {currentRoom && currentRoom.presentations.map((presentation, idx) => {
+          const draft = getDraft(idx);
+          return (
+            <div key={`${presentation.presenter}-${idx}`} style={styles.card}>
+              <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginBottom: 12 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {presentation.session ? `[${presentation.session}${presentation.time ? ` ${presentation.time}` : ''}] ` : ''}
+                  {presentation.presenter}
+                </span>
+                <br />
+                {presentation.topic}
               </div>
+
+              <div style={styles.cardTitle}>
+                <Star size={18} color="#f59e0b" fill="#f59e0b" />
+                評分項目（1–10 分）
+              </div>
+              {SCORE_ITEMS.map((item) => (
+                <div key={`${idx}-${item.key}`} style={styles.scoreRow}>
+                  <div style={styles.scoreLabel}>{item.emoji} {item.label}</div>
+                  <div style={styles.scoreButtons}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <button
+                        key={n}
+                        style={styles.scoreBtn(draft.scores[item.key] === n)}
+                        onClick={() =>
+                          updateDraft(idx, (prev) => ({
+                            ...prev,
+                            scores: { ...prev.scores, [item.key]: n },
+                          }))
+                        }
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ ...styles.cardTitle, marginTop: 12 }}>
+                <Sparkles size={18} color="#7c4dff" />
+                一句話回饋
+              </div>
+              <textarea
+                style={styles.textarea}
+                placeholder="寫下您對這場報告的一句話回饋…"
+                value={draft.comment}
+                onChange={(e) =>
+                  updateDraft(idx, (prev) => ({ ...prev, comment: e.target.value }))
+                }
+                onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+                onBlur={(e) => (e.target.style.borderColor = '#e0e7ff')}
+              />
+              <button
+                style={{ ...styles.aiBtn, opacity: draft.aiLoading ? 0.7 : 1, cursor: draft.aiLoading ? 'not-allowed' : 'pointer' }}
+                onClick={() => handleGenerateAIForPresentation(presentation, idx)}
+                disabled={draft.aiLoading}
+              >
+                <Sparkles size={14} />
+                {draft.aiLoading ? 'AI 生成中…' : '✨ AI 產生評語'}
+              </button>
+
+              <button
+                style={{ ...styles.primaryBtn, opacity: draft.submitting ? 0.7 : 1, cursor: draft.submitting ? 'not-allowed' : 'pointer' }}
+                onClick={() => handleSubmitForPresentation(presentation, idx)}
+                disabled={draft.submitting}
+              >
+                <Send size={18} />
+                {draft.submitting ? '提交中…' : `提交 ${presentation.presenter} 評分`}
+              </button>
             </div>
-          ))}
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>
-            <Sparkles size={18} color="#7c4dff" />
-            一句話回饋
-          </div>
-          <textarea
-            style={styles.textarea}
-            placeholder="寫下您對這場報告的一句話回饋…"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
-            onBlur={(e) => (e.target.style.borderColor = '#e0e7ff')}
-          />
-          <button
-            style={{ ...styles.aiBtn, opacity: aiLoading ? 0.7 : 1, cursor: aiLoading ? 'not-allowed' : 'pointer' }}
-            onClick={handleGenerateAI}
-            disabled={aiLoading}
-          >
-            <Sparkles size={14} />
-            {aiLoading ? 'AI 生成中…' : '✨ AI 產生評語'}
-          </button>
-        </div>
-
-        <button
-          style={{ ...styles.primaryBtn, opacity: submitting ? 0.7 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          <Send size={18} />
-          {submitting ? '提交中…' : '提交評分'}
-        </button>
+          );
+        })}
 
         <div style={styles.footer}>
           <p>© 2026 SP26 成果發表會 · AI 評分系統</p>
