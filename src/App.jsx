@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
-import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle } from 'lucide-react';
+import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
 // const firebaseConfig = {
@@ -363,6 +363,7 @@ const styles = {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
+  const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
   const [scores, setScores] = useState({ professionalism: 0, fluency: 0, visual: 0, inspiration: 0 });
@@ -373,6 +374,10 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminRatings, setAdminRatings] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [csvExporting, setCsvExporting] = useState(false);
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -383,6 +388,72 @@ export default function App() {
       .then((cred) => setUserId(cred.user.uid))
       .catch((err) => console.error('匿名登入失敗：', err));
   }, []);
+
+  // 線上人數：簡易即時狀態（onlineUsers 集合）
+  useEffect(() => {
+    if (!userId) return;
+
+    const userDocRef = doc(db, 'onlineUsers', userId);
+
+    // 註冊 / 心跳更新
+    setDoc(
+      userDocRef,
+      { userId, lastActive: serverTimestamp() },
+      { merge: true }
+    ).catch((err) => console.error('更新線上狀態失敗：', err));
+
+    const intervalId = setInterval(() => {
+      setDoc(
+        userDocRef,
+        { userId, lastActive: serverTimestamp() },
+        { merge: true }
+      ).catch((err) => console.error('更新線上狀態失敗：', err));
+    }, 30000);
+
+    const handleBeforeUnload = () => {
+      deleteDoc(userDocRef).catch(() => {});
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      deleteDoc(userDocRef).catch(() => {});
+    };
+  }, [userId]);
+
+  // 只有在開啟管理員頁時才訂閱線上人數
+  useEffect(() => {
+    if (!showAdmin) return;
+
+    const unsub = onSnapshot(
+      collection(db, 'onlineUsers'),
+      (snapshot) => {
+        const now = Date.now();
+        let count = 0;
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const ts = data.lastActive;
+          if (ts && typeof ts.toMillis === 'function') {
+            const diff = now - ts.toMillis();
+            if (diff < 60000) {
+              count += 1;
+            }
+          } else {
+            // 若 timestamp 還沒同步回來，先暫時算在線
+            count += 1;
+          }
+        });
+        setOnlineCount(count);
+      },
+      (err) => {
+        console.error('讀取線上人數失敗：', err);
+      }
+    );
+
+    return () => unsub();
+  }, [showAdmin]);
 
   const currentRoom = ROOMS.find((r) => r.id === selectedRoom);
   const currentPresentation =
@@ -470,6 +541,105 @@ export default function App() {
   }, [showLeaderboard]);
 
   const handleOpenLeaderboard = () => setShowLeaderboard(true);
+  const handleOpenAdmin = () => setShowAdmin(true);
+
+  // 管理員：Dashboard - 監聽所有評分紀錄
+  useEffect(() => {
+    if (!showAdmin) return;
+    setAdminLoading(true);
+
+    const unsub = onSnapshot(
+      collection(db, 'ratings'),
+      (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          list.push({ id: docSnap.id, ...d });
+        });
+        // 依時間排序（新到舊）
+        list.sort((a, b) => {
+          const ta = a.timestamp && typeof a.timestamp.toMillis === 'function' ? a.timestamp.toMillis() : 0;
+          const tb = b.timestamp && typeof b.timestamp.toMillis === 'function' ? b.timestamp.toMillis() : 0;
+          return tb - ta;
+        });
+        setAdminRatings(list);
+        setAdminLoading(false);
+      },
+      (err) => {
+        console.error('讀取 Dashboard 資料失敗：', err);
+        setAdminLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [showAdmin]);
+
+  const handleExportCSV = () => {
+    if (!adminRatings.length) {
+      alert('目前沒有可匯出的評分資料');
+      return;
+    }
+    setCsvExporting(true);
+    try {
+      const headers = [
+        'roomId',
+        'roomName',
+        'presenter',
+        'topic',
+        'session',
+        'professionalism',
+        'fluency',
+        'visual',
+        'inspiration',
+        'comment',
+        'timestamp',
+        'anonymousUserId',
+      ];
+
+      const rows = adminRatings.map((r) => {
+        const room = ROOMS.find((x) => x.id === r.roomId);
+        const ts =
+          r.timestamp && typeof r.timestamp.toDate === 'function'
+            ? r.timestamp.toDate().toISOString()
+            : '';
+        const values = [
+          r.roomId || '',
+          room?.name || '',
+          r.presenter || '',
+          r.topic || '',
+          r.session || '',
+          r.scores?.professionalism ?? '',
+          r.scores?.fluency ?? '',
+          r.scores?.visual ?? '',
+          r.scores?.inspiration ?? '',
+          r.comment || '',
+          ts,
+          r.anonymousUserId || '',
+        ];
+        return values
+          .map((val) =>
+            `"${String(val).replace(/"/g, '""')}"`
+          )
+          .join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sp26-ratings-dashboard.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('匯出 CSV 失敗：', err);
+      alert('匯出 CSV 失敗，請稍後再試。');
+    } finally {
+      setCsvExporting(false);
+    }
+  };
 
   return (
     <div style={styles.app}>
@@ -478,10 +648,16 @@ export default function App() {
           <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
           <div style={styles.headerSub}>AI 智慧評分系統</div>
         </div>
-        <button style={styles.headerBtn} onClick={handleOpenLeaderboard}>
-          <BarChart3 size={16} />
-          排行榜
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={styles.headerBtn} onClick={handleOpenLeaderboard}>
+            <BarChart3 size={16} />
+            排行榜
+          </button>
+          <button style={styles.headerBtn} onClick={handleOpenAdmin}>
+            <Users size={16} />
+            管理員
+          </button>
+        </div>
       </header>
 
       <main style={styles.main}>
@@ -649,6 +825,141 @@ export default function App() {
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {showAdmin && (
+        <div style={styles.overlay} onClick={() => setShowAdmin(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>
+                <Table2 size={20} />
+                管理員 Dashboard
+              </div>
+              <button
+                type="button"
+                aria-label="關閉"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                onClick={() => setShowAdmin(false)}
+              >
+                <X size={22} color="#666" />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: '#e8f5e9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Users size={18} color="#2e7d32" />
+                <span>目前在線人數：</span>
+                <span style={{ fontWeight: 700, fontSize: '1rem' }}>{onlineCount}</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#555' }}>（最近 1 分鐘有心跳的使用者）</div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BarChart3 size={16} color="#1a73e8" />
+                  投票紀錄 Dashboard
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  disabled={csvExporting || !adminRatings.length}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #1a73e8',
+                    background: csvExporting || !adminRatings.length ? '#e3f2fd' : '#fff',
+                    color: '#1a73e8',
+                    fontSize: '0.8rem',
+                    cursor: csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <Download size={14} />
+                  {csvExporting ? '匯出中…' : '匯出 CSV'}
+                </button>
+              </div>
+
+              {adminLoading ? (
+                <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>載入中…</div>
+              ) : adminRatings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>目前尚無評分資料</div>
+              ) : (
+                <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f5f5f5' }}>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>時間</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>教室</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>報告者</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>題目</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>專業</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>流暢</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>視覺</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>啟發</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>回饋</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminRatings.map((r) => {
+                        const room = ROOMS.find((x) => x.id === r.roomId);
+                        const ts =
+                          r.timestamp && typeof r.timestamp.toDate === 'function'
+                            ? r.timestamp.toDate()
+                            : null;
+                        const timeStr = ts
+                          ? `${ts.getHours().toString().padStart(2, '0')}:${ts.getMinutes().toString().padStart(2, '0')}`
+                          : '';
+                        return (
+                          <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
+                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
+                            <td style={{ padding: '6px 6px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.professionalism}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.fluency}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.visual}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: '6px 6px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Table2 size={16} color="#5e35b1" />
+                課程與老師一覽（目前為只讀）
+              </div>
+              <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: 10, fontSize: '0.8rem' }}>
+                {ROOMS.map((room) => (
+                  <div key={room.id} style={{ marginBottom: 10 }}>
+                    <div style={{ fontWeight: 600, color: '#1a237e', marginBottom: 4 }}>
+                      {room.name}（{room.id}）
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#555', marginBottom: 4 }}>主題：{room.theme}</div>
+                    <div>
+                      {room.presentations.map((p, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 6, fontSize: '0.75rem', marginBottom: 2 }}>
+                          <span style={{ color: '#999', minWidth: 60 }}>{p.session || '-'}</span>
+                          <span style={{ color: '#999', minWidth: 80 }}>{p.time || ''}</span>
+                          <span style={{ minWidth: 100 }}>{p.presenter}</span>
+                          <span style={{ flex: 1 }}>{p.topic}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
