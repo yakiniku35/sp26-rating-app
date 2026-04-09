@@ -25,7 +25,6 @@ const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
 const EVENT_SCHEDULE_URL = process.env.REACT_APP_EVENT_SCHEDULE_URL || '';
 
 const I18N = {
@@ -48,8 +47,6 @@ const I18N = {
     reselect: '重新選擇學生',
     scoreTitle: '評分項目（1–10 分）',
     feedbackTitle: '給學生一句鼓勵的話',
-    quickFeedback: '快速產生建議回饋',
-    generating: '建議產生中…',
     adminDashboard: '管理員 Dashboard',
     backToVote: '返回評分頁',
     endAdmin: '結束管理',
@@ -73,8 +70,6 @@ const I18N = {
     reselect: 'Choose Another Presenter',
     scoreTitle: 'Scoring (1-10)',
     feedbackTitle: 'Share Your Feedback',
-    quickFeedback: 'Generate Suggested Feedback',
-    generating: 'Generating...',
     adminDashboard: 'Admin Dashboard',
     backToVote: 'Back to Voting',
     endAdmin: 'Exit Admin',
@@ -187,21 +182,6 @@ function buildPresentationKey(roomId, presentation) {
 
 function buildRatingDocId(userId, presentationKey) {
   return `${userId}_${presentationKey}`;
-}
-
-async function generateAIComment(topic, scores) {
-  const prompt = `這位學生報告的題目是「${topic}」，觀眾給的評分為：內容專業度 ${scores.professionalism}/10、表達流暢度 ${scores.fluency}/10、視覺設計感 ${scores.visual}/10、整體啟發性 ${scores.inspiration}/10。請用繁體中文寫一段 50 字以內、溫暖鼓勵的評語。`;
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-  if (!res.ok) throw new Error('Gemini API 呼叫失敗');
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '謝謝您精彩的分享！';
 }
 
 const styles = {
@@ -347,21 +327,6 @@ const styles = {
     marginTop: 8,
     marginLeft: 'auto',
     marginRight: 'auto',
-  },
-  aiBtn: {
-    padding: '8px 12px',
-    background: '#eef5ff',
-    color: '#1a73e8',
-    border: '1px solid #cfe2ff',
-    borderRadius: 10,
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    transition: 'opacity 0.2s',
   },
   toast: (show) => ({
     position: 'fixed',
@@ -762,7 +727,6 @@ export default function App() {
       presentationDrafts[idx] || {
         scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
         comment: '',
-        aiLoading: false,
         submitting: false,
       },
     [presentationDrafts]
@@ -774,32 +738,11 @@ export default function App() {
         prev[idx] || {
           scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
           comment: '',
-          aiLoading: false,
           submitting: false,
         };
       return { ...prev, [idx]: updater(current) };
     });
   }, []);
-
-  const handleGenerateAIForPresentation = useCallback(
-    async (presentation, idx) => {
-      const draft = getDraft(idx);
-      if (!Object.values(draft.scores).every((v) => v > 0)) {
-        alert('請先完成 4 項評分，再產生建議回饋');
-        return;
-      }
-      updateDraft(idx, (prev) => ({ ...prev, aiLoading: true }));
-      try {
-        const text = await generateAIComment(presentation.topic, draft.scores);
-        updateDraft(idx, (prev) => ({ ...prev, comment: text, aiLoading: false }));
-      } catch (err) {
-        alert('建議回饋產生失敗，請確認設定是否正確。');
-        console.error(err);
-        updateDraft(idx, (prev) => ({ ...prev, aiLoading: false }));
-      }
-    },
-    [getDraft, updateDraft]
-  );
 
   const handleSubmitForPresentation = useCallback(
     async (presentation, idx) => {
@@ -1401,20 +1344,6 @@ export default function App() {
                   您已提交過這位報告者的評分；一般使用者每位報告只能填一次。
                 </div>
               )}
-              <button
-                type="button"
-                style={{
-                  ...styles.aiBtn,
-                  ...(isMobile ? { width: '100%', justifyContent: 'center', padding: '6px 9px', fontSize: '0.74rem' } : {}),
-                  opacity: draft.aiLoading || rowLocked ? 0.7 : 1,
-                  cursor: draft.aiLoading || rowLocked ? 'not-allowed' : 'pointer',
-                }}
-                onClick={() => handleGenerateAIForPresentation(presentation, idx)}
-                disabled={draft.aiLoading || rowLocked}
-              >
-                <MessageSquare size={14} />
-                {draft.aiLoading ? t('generating') : t('quickFeedback')}
-              </button>
 
               <button
                 type="button"
