@@ -28,6 +28,59 @@ const firebaseConfig = {
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
 const EVENT_SCHEDULE_URL = process.env.REACT_APP_EVENT_SCHEDULE_URL || '';
 
+const I18N = {
+  zh: {
+    appTitle: 'SP26 成果發表會',
+    subAdmin: '管理員模式',
+    subUser: '即時評分系統（匿名評分）',
+    leaderboard: '排行榜',
+    admin: '管理員',
+    logout: '登出',
+    loadingAuth: '讀取登入狀態中',
+    loadingHint: '請稍候，系統正在確認您的登入狀態。',
+    scheduleTitle: '本次發表會議程',
+    scheduleDesc: '查看本次發表會完整議程與時程安排。',
+    scheduleBtn: '觀看議程連結',
+    chooseTitle: '選擇教室與報告',
+    chooseRoom: '── 請選擇教室 ──',
+    choosePresenter: '── 請選擇學生 / 題目 ──',
+    ratingPage: '評分頁面',
+    reselect: '重新選擇學生',
+    scoreTitle: '評分項目（1–10 分）',
+    feedbackTitle: '一句話回饋',
+    quickFeedback: '快速產生建議回饋',
+    generating: '建議產生中…',
+    adminDashboard: '管理員 Dashboard',
+    backToVote: '返回評分頁',
+    endAdmin: '結束管理',
+  },
+  en: {
+    appTitle: 'SP26 Presentation Day',
+    subAdmin: 'Admin Mode',
+    subUser: 'Live Rating System (Anonymous)',
+    leaderboard: 'Leaderboard',
+    admin: 'Admin',
+    logout: 'Sign Out',
+    loadingAuth: 'Checking Sign-in Status',
+    loadingHint: 'Please wait while we verify your sign-in status.',
+    scheduleTitle: 'Event Schedule',
+    scheduleDesc: 'View the full agenda and timeline for this event.',
+    scheduleBtn: 'Open Schedule',
+    chooseTitle: 'Select Room and Presentation',
+    chooseRoom: 'Select a room',
+    choosePresenter: 'Select a presenter / topic',
+    ratingPage: 'Rating Page',
+    reselect: 'Choose Another Presenter',
+    scoreTitle: 'Scoring (1-10)',
+    feedbackTitle: 'One-line Feedback',
+    quickFeedback: 'Generate Suggested Feedback',
+    generating: 'Generating...',
+    adminDashboard: 'Admin Dashboard',
+    backToVote: 'Back to Voting',
+    endAdmin: 'Exit Admin',
+  },
+};
+
 const app = initializeApp(firebaseConfig);
 // Firebase Analytics 需要 `measurementId`，避免未設定時初始化失敗
 if (firebaseConfig.measurementId) {
@@ -390,6 +443,7 @@ const styles = {
 };
 
 export default function App() {
+  const [language, setLanguage] = useState('zh');
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth || 1024);
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
   const [userId, setUserId] = useState(null);
@@ -418,6 +472,7 @@ export default function App() {
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
   const isAdminPage = currentPath === ADMIN_PATH;
   const isMobile = viewportWidth <= 768;
+  const t = useCallback((key) => (I18N[language] && I18N[language][key]) || I18N.zh[key] || key, [language]);
 
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth || 1024);
@@ -1135,48 +1190,61 @@ export default function App() {
     <div style={styles.app}>
       <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
         <div>
-          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>🎓 SP26 成果發表會</div>
+          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>🎓 {t('appTitle')}</div>
           <div style={{ ...styles.headerSub, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
-            {isAdminUser ? `管理員模式 · ${userProfile?.displayName || ''}` : '即時評分系統（匿名評分）'}
+            {isAdminUser ? `${t('subAdmin')} · ${userProfile?.displayName || ''}` : t('subUser')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            style={{
+              ...styles.headerBtn,
+              padding: isMobile ? '6px 8px' : '6px 10px',
+              fontSize: isMobile ? '0.74rem' : '0.8rem',
+              background: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
           {isAdminUser && (
             <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleAdminLogout}>
               <LogOut size={16} />
-              登出
+              {t('logout')}
             </button>
           )}
           <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenLeaderboard}>
             <BarChart3 size={16} />
-            排行榜
+            {t('leaderboard')}
           </button>
           <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenAdmin}>
             <Users size={16} />
-            管理員
+            {t('admin')}
           </button>
         </div>
       </header>
 
       {!isAdminPage && (
-      <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : {}) }}>
+      <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 980, padding: '22px 22px 60px' }) }}>
         {!authReady ? (
           <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
             <div style={styles.cardTitle}>
               <Users size={18} color="#1a73e8" />
-              讀取登入狀態中
+              {t('loadingAuth')}
             </div>
-            <div style={{ fontSize: '0.9rem', color: '#666' }}>請稍候，系統正在確認您的登入狀態。</div>
+            <div style={{ fontSize: '0.9rem', color: '#666' }}>{t('loadingHint')}</div>
           </div>
         ) : (
           <>
         <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
           <div style={styles.cardTitle}>
             <CalendarDays size={18} color="#1a73e8" />
-            本次發表會議程
+            {t('scheduleTitle')}
           </div>
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
-            查看本次發表會完整議程與時程安排。
+            {t('scheduleDesc')}
           </div>
           <button
             type="button"
@@ -1189,7 +1257,7 @@ export default function App() {
             onClick={handleOpenSchedule}
             disabled={!EVENT_SCHEDULE_URL}
           >
-            觀看議程連結
+            {t('scheduleBtn')}
           </button>
           {!EVENT_SCHEDULE_URL && (
             <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 8 }}>
@@ -1201,7 +1269,7 @@ export default function App() {
         <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
           <div style={styles.cardTitle}>
             <ChevronDown size={18} color="#1a73e8" />
-            選擇教室與報告
+            {t('chooseTitle')}
           </div>
 
           <select
@@ -1213,7 +1281,7 @@ export default function App() {
               setPresentationDrafts({});
             }}
           >
-            <option value="">── 請選擇教室 ──</option>
+            <option value="">{t('chooseRoom')}</option>
             {rooms.map((room) => (
               <option key={room.id} value={room.id}>{room.name}</option>
             ))}
@@ -1236,7 +1304,7 @@ export default function App() {
               value={selectedPresentationIdx}
               onChange={(e) => setSelectedPresentationIdx(e.target.value)}
             >
-              <option value="">── 請選擇學生 / 題目 ──</option>
+              <option value="">{t('choosePresenter')}</option>
               {currentRoom.presentations.map((presentation, idx) => (
                 <option key={`${presentation.presenter}-${idx}`} value={String(idx)}>
                   [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter} - {presentation.topic}
@@ -1257,7 +1325,7 @@ export default function App() {
           return (
             <div id="rating-page" key={`${presentation.presenter}-${idx}`} style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: '0.82rem', color: '#1a73e8', fontWeight: 600 }}>評分頁面</div>
+                <div style={{ fontSize: '0.82rem', color: '#1a73e8', fontWeight: 600 }}>{t('ratingPage')}</div>
                 <button
                   type="button"
                   onClick={() => setSelectedPresentationIdx('')}
@@ -1271,7 +1339,7 @@ export default function App() {
                     cursor: 'pointer',
                   }}
                 >
-                  重新選擇學生
+                  {t('reselect')}
                 </button>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginBottom: 12 }}>
@@ -1285,7 +1353,7 @@ export default function App() {
 
               <div style={styles.cardTitle}>
                 <Star size={18} color="#f59e0b" fill="#f59e0b" />
-                評分項目（1–10 分）
+                {t('scoreTitle')}
               </div>
               {SCORE_ITEMS.map((item) => (
                 <div key={`${idx}-${item.key}`} style={{ ...styles.scoreRow, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: 8, marginBottom: 12 } : {}) }}>
@@ -1313,7 +1381,7 @@ export default function App() {
 
               <div style={{ ...styles.cardTitle, marginTop: 12 }}>
                 <MessageSquare size={18} color="#1a73e8" />
-                一句話回饋
+                {t('feedbackTitle')}
               </div>
               <textarea
                 style={{ ...styles.textarea, opacity: rowLocked ? 0.75 : 1, ...(isMobile ? { minHeight: 72, fontSize: '0.9rem' } : {}) }}
@@ -1343,7 +1411,7 @@ export default function App() {
                 disabled={draft.aiLoading || rowLocked}
               >
                 <MessageSquare size={14} />
-                {draft.aiLoading ? '建議產生中…' : '快速產生建議回饋'}
+                {draft.aiLoading ? t('generating') : t('quickFeedback')}
               </button>
 
               <button
@@ -1500,12 +1568,12 @@ export default function App() {
       )}
 
       {isAdminPage && isAdminUser && (
-        <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : {}) }}>
+        <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 1080, padding: '22px 22px 60px' }) }}>
           <div style={{ ...styles.card, marginTop: 8, ...(isMobile ? { borderRadius: 12, padding: 14 } : {}) }}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
                 <Table2 size={20} />
-                管理員 Dashboard
+                {t('adminDashboard')}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
@@ -1521,7 +1589,7 @@ export default function App() {
                   onClick={() => navigateToMainPage()}
                   title="返回一般評分頁"
                 >
-                  返回評分頁
+                  {t('backToVote')}
                 </button>
                 <button
                   type="button"
@@ -1537,7 +1605,7 @@ export default function App() {
                   title="登出目前帳號"
                 >
                   <LogOut size={16} />
-                  結束管理
+                  {t('endAdmin')}
                 </button>
               </div>
             </div>
