@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
-import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays } from 'lucide-react';
+import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
 // const firebaseConfig = {
@@ -295,9 +295,9 @@ const styles = {
   },
   aiBtn: {
     padding: '10px 16px',
-    background: 'linear-gradient(90deg, #7c4dff, #e040fb)',
-    color: '#fff',
-    border: 'none',
+    background: '#eef5ff',
+    color: '#1a73e8',
+    border: '1px solid #cfe2ff',
     borderRadius: 10,
     fontSize: '0.85rem',
     fontWeight: 600,
@@ -720,7 +720,7 @@ export default function App() {
     async (presentation, idx) => {
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
-        alert('請先完成 4 項評分，再產生 AI 評語');
+        alert('請先完成 4 項評分，再產生建議回饋');
         return;
       }
       updateDraft(idx, (prev) => ({ ...prev, aiLoading: true }));
@@ -728,7 +728,7 @@ export default function App() {
         const text = await generateAIComment(presentation.topic, draft.scores);
         updateDraft(idx, (prev) => ({ ...prev, comment: text, aiLoading: false }));
       } catch (err) {
-        alert('AI 評語產生失敗，請確認 Gemini API Key 是否正確。');
+        alert('建議回饋產生失敗，請確認設定是否正確。');
         console.error(err);
         updateDraft(idx, (prev) => ({ ...prev, aiLoading: false }));
       }
@@ -1129,7 +1129,7 @@ export default function App() {
         <div>
           <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
           <div style={styles.headerSub}>
-            {isAdminUser ? `管理員模式 · ${userProfile?.displayName || ''}` : 'AI 智慧評分系統（匿名評分）'}
+            {isAdminUser ? `管理員模式 · ${userProfile?.displayName || ''}` : '即時評分系統（匿名評分）'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -1322,7 +1322,7 @@ export default function App() {
               ))}
 
               <div style={{ ...styles.cardTitle, marginTop: 12 }}>
-                <Sparkles size={18} color="#7c4dff" />
+                <MessageSquare size={18} color="#1a73e8" />
                 一句話回饋
               </div>
               <textarea
@@ -1351,8 +1351,8 @@ export default function App() {
                 onClick={() => handleGenerateAIForPresentation(presentation, idx)}
                 disabled={draft.aiLoading || rowLocked}
               >
-                <Sparkles size={14} />
-                {draft.aiLoading ? 'AI 生成中…' : '✨ AI 產生評語'}
+                <MessageSquare size={14} />
+                {draft.aiLoading ? '建議產生中…' : '快速產生建議回饋'}
               </button>
 
               <button
@@ -1373,8 +1373,8 @@ export default function App() {
         })()}
 
         <div style={styles.footer}>
-          <p>© 2026 SP26 成果發表會 · AI 評分系統</p>
-          <p style={{ marginTop: 4 }}>Powered by React · Firebase · Gemini AI</p>
+          <p>© 2026 SP26 成果發表會 · 評分系統</p>
+          <p style={{ marginTop: 4 }}>Powered by React · Firebase</p>
         </div>
           </>
         )}
