@@ -1645,21 +1645,21 @@ export default function App() {
               ) : filteredAdminRatings.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>目前尚無評分資料</div>
               ) : (
-                <div style={{ maxHeight: isMobile ? 220 : 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.74rem' : '0.8rem' }}>
+                <div style={{ maxHeight: isMobile ? 400 : 450, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.76rem' : '0.82rem' }}>
                     <thead>
                       <tr style={{ background: '#f5f5f5' }}>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>時間</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>評分帳號</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>教室</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>報告者</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>題目</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>專業</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>流暢</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>視覺</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>啟發</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>回饋</th>
-                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>分數管理</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>時間</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>評分帳號</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>教室</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>報告者</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>題目</th>
+                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>專業</th>
+                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>流暢</th>
+                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>視覺</th>
+                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>啟發</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>回饋</th>
+                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>分數管理</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1674,30 +1674,30 @@ export default function App() {
                           : '';
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{timeStr}</td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
                               {r.raterName || r.raterEmail || (r.raterUserId ? `${r.raterUserId.slice(0, 8)}…` : '-')}
                             </td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
-                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.professionalism}</td>
-                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.fluency}</td>
-                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.visual}</td>
-                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.inspiration}</td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
-                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
+                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.professionalism}</td>
+                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.fluency}</td>
+                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.visual}</td>
+                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
+                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <button
                                 type="button"
                                 onClick={() => handleAdminScoreAction(r, 'inc')}
-                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', marginRight: 4, fontWeight: 500 }}
                               >
                                 +1
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleAdminScoreAction(r, 'dec')}
-                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', marginRight: 4, fontWeight: 500 }}
                               >
                                 -1
                               </button>
@@ -1707,7 +1707,7 @@ export default function App() {
                                   if (!window.confirm('確定要把這筆投票四項分數全部重置為 0 嗎？')) return;
                                   handleAdminScoreAction(r, 'reset');
                                 }}
-                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer' }}
+                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', fontWeight: 500 }}
                               >
                                 重置
                               </button>
@@ -1722,27 +1722,27 @@ export default function App() {
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Table2 size={16} color="#5e35b1" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.9rem' : '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Table2 size={18} color="#5e35b1" />
                   課程與老師管理
                 </div>
-                <span style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
+                <span style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
               </div>
-              <div style={{ maxHeight: isMobile ? 180 : 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: isMobile ? 8 : 10, fontSize: isMobile ? '0.74rem' : '0.8rem' }}>
+              <div style={{ maxHeight: isMobile ? 500 : 600, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: isMobile ? 12 : 16, fontSize: isMobile ? '0.82rem' : '0.88rem' }}>
                 {rooms.map((room) => (
-                  <div key={room.id} style={{ marginBottom: 10, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#1a237e' }}>
+                  <div key={room.id} style={{ marginBottom: 20, borderBottom: '1px solid #e0e0e0', paddingBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: 10, gap: 8, flexDirection: isMobile ? 'column' : 'row' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: '#1a237e', fontSize: isMobile ? '0.95rem' : '1.05rem', marginBottom: 4 }}>
                           {room.name}（{room.id}）
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 2 }}>主題：{room.theme}</div>
+                        <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#555', marginTop: 4 }}>主題：{room.theme}</div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                         <button
                           type="button"
-                          style={{ border: '1px solid #5e35b1', background: '#fff', color: '#5e35b1', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          style={{ border: '1px solid #5e35b1', background: '#fff', color: '#5e35b1', borderRadius: 8, padding: isMobile ? '8px 12px' : '6px 12px', fontSize: isMobile ? '0.82rem' : '0.8rem', cursor: 'pointer', fontWeight: 500 }}
                           onClick={() => {
                             const newName = window.prompt('請輸入教室名稱', room.name);
                             if (newName == null || newName.trim() === '') return;
@@ -1759,65 +1759,92 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <div style={{ marginTop: 4 }}>
+                    <div style={{ marginTop: 12 }}>
                       {room.presentations.map((p, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', marginBottom: 2 }}>
-                          <span style={{ color: '#999', minWidth: 50 }}>{p.session || '-'}</span>
-                          <span style={{ color: '#999', minWidth: 70 }}>{p.time || ''}</span>
-                          <span style={{ minWidth: 90 }}>{p.presenter}</span>
-                          <span style={{ flex: 1 }}>{p.topic}</span>
-                          <button
-                            type="button"
-                            style={{ border: '1px solid #90caf9', background: '#e3f2fd', color: '#1565c0', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
-                            onClick={() => {
-                              const session = window.prompt('場次（例如 S1）', p.session || '');
-                              if (session == null) return;
-                              const time = window.prompt('時間（例如 10:05-10:20）', p.time || '');
-                              if (time == null) return;
-                              const presenter = window.prompt('報告者 / 老師姓名', p.presenter || '');
-                              if (presenter == null || presenter.trim() === '') return;
-                              const topic = window.prompt('題目', p.topic || '');
-                              if (topic == null || topic.trim() === '') return;
-                              setRooms((prev) =>
-                                prev.map((r) =>
-                                  r.id === room.id
-                                    ? {
-                                        ...r,
-                                        presentations: r.presentations.map((pp, i) =>
-                                          i === idx ? { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() } : pp
-                                        ),
-                                      }
-                                    : r
-                                )
-                              );
-                            }}
-                          >
-                            編輯
-                          </button>
-                          <button
-                            type="button"
-                            style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
-                            onClick={() => {
-                              if (!window.confirm('確定要刪除這筆報告嗎？')) return;
-                              setRooms((prev) =>
-                                prev.map((r) =>
-                                  r.id === room.id
-                                    ? {
-                                        ...r,
-                                        presentations: r.presentations.filter((_, i) => i !== idx),
-                                      }
-                                    : r
-                                )
-                              );
-                            }}
-                          >
-                            刪除
-                          </button>
+                        <div key={idx} style={{ 
+                          display: 'flex', 
+                          alignItems: isMobile ? 'flex-start' : 'center', 
+                          gap: isMobile ? 6 : 10, 
+                          fontSize: isMobile ? '0.8rem' : '0.85rem', 
+                          marginBottom: isMobile ? 12 : 8,
+                          padding: isMobile ? '10px 8px' : '8px 6px',
+                          background: '#fafafa',
+                          borderRadius: 8,
+                          flexDirection: isMobile ? 'column' : 'row'
+                        }}>
+                          <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
+                            <span style={{ color: '#666', minWidth: isMobile ? 40 : 50, fontWeight: 500 }}>{p.session || '-'}</span>
+                            <span style={{ color: '#666', minWidth: isMobile ? 90 : 100, fontWeight: 500 }}>{p.time || ''}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
+                            <div style={{ fontWeight: 600, color: '#333', marginBottom: 3 }}>{p.presenter}</div>
+                            <div style={{ color: '#555', fontSize: isMobile ? '0.78rem' : '0.82rem', lineHeight: 1.4 }}>{p.topic}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexShrink: 0, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
+                            <button
+                              type="button"
+                              style={{ border: '1px solid #90caf9', background: '#e3f2fd', color: '#1565c0', borderRadius: 8, padding: isMobile ? '8px 12px' : '4px 10px', fontSize: isMobile ? '0.78rem' : '0.75rem', cursor: 'pointer', fontWeight: 500 }}
+                              onClick={() => {
+                                const session = window.prompt('場次（例如 S1）', p.session || '');
+                                if (session == null) return;
+                                const time = window.prompt('時間（例如 10:05-10:20）', p.time || '');
+                                if (time == null) return;
+                                const presenter = window.prompt('報告者 / 老師姓名', p.presenter || '');
+                                if (presenter == null || presenter.trim() === '') return;
+                                const topic = window.prompt('題目', p.topic || '');
+                                if (topic == null || topic.trim() === '') return;
+                                setRooms((prev) =>
+                                  prev.map((r) =>
+                                    r.id === room.id
+                                      ? {
+                                          ...r,
+                                          presentations: r.presentations.map((pp, i) =>
+                                            i === idx ? { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() } : pp
+                                          ),
+                                        }
+                                      : r
+                                  )
+                                );
+                              }}
+                            >
+                              編輯
+                            </button>
+                            <button
+                              type="button"
+                              style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 8, padding: isMobile ? '8px 12px' : '4px 10px', fontSize: isMobile ? '0.78rem' : '0.75rem', cursor: 'pointer', fontWeight: 500 }}
+                              onClick={() => {
+                                if (!window.confirm('確定要刪除這筆報告嗎？')) return;
+                                setRooms((prev) =>
+                                  prev.map((r) =>
+                                    r.id === room.id
+                                      ? {
+                                          ...r,
+                                          presentations: r.presentations.filter((_, i) => i !== idx),
+                                        }
+                                      : r
+                                  )
+                                );
+                              }}
+                            >
+                              刪除
+                            </button>
+                          </div>
                         </div>
                       ))}
                       <button
                         type="button"
-                        style={{ marginTop: 4, border: '1px dashed #4caf50', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: '2px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
+                        style={{ 
+                          marginTop: 8, 
+                          border: '1px dashed #4caf50', 
+                          background: '#e8f5e9', 
+                          color: '#2e7d32', 
+                          borderRadius: 8, 
+                          padding: isMobile ? '10px 16px' : '6px 12px', 
+                          fontSize: isMobile ? '0.82rem' : '0.78rem', 
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                          width: isMobile ? '100%' : 'auto'
+                        }}
                         onClick={() => {
                           const session = window.prompt('場次（例如 S1）', '');
                           if (session == null) return;
