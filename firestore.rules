@@ -11,7 +11,12 @@ service cloud.firestore {
 
     match /ratings/{ratingId} {
       allow read: if true;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.raterUserId
+        && (
+          isAdmin()
+          || ratingId == request.auth.uid + '_' + request.resource.data.presentationKey
+        );
       allow update, delete: if isAdmin();
     }
 

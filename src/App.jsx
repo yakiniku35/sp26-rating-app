@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut } from 'lucide-react';
@@ -115,6 +115,20 @@ const SCORE_ITEMS = [
   { key: 'visual', label: '視覺設計感', emoji: '🎨' },
   { key: 'inspiration', label: '整體啟發性', emoji: '💡' },
 ];
+
+function buildPresentationKey(roomId, presentation) {
+  return encodeURIComponent([
+    roomId,
+    presentation.session || '',
+    presentation.time || '',
+    presentation.presenter || '',
+    presentation.topic || '',
+  ].join('||'));
+}
+
+function buildRatingDocId(userId, presentationKey) {
+  return `${userId}_${presentationKey}`;
+}
 
 async function generateAIComment(topic, scores) {
   const prompt = `這位學生報告的題目是「${topic}」，觀眾給的評分為：內容專業度 ${scores.professionalism}/10、表達流暢度 ${scores.fluency}/10、視覺設計感 ${scores.visual}/10、整體啟發性 ${scores.inspiration}/10。請用繁體中文寫一段 50 字以內、溫暖鼓勵的評語。`;
@@ -392,6 +406,7 @@ export default function App() {
   const [csvExporting, setCsvExporting] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
+  const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
 
   const verifyAdminAccess = useCallback(async (user) => {
     const snap = await getDoc(doc(db, 'admins', user.uid));
@@ -514,6 +529,29 @@ export default function App() {
     if (!isAdminUser && showAdmin) setShowAdmin(false);
   }, [isAdminUser, showAdmin]);
 
+  useEffect(() => {
+    if (!userId) {
+      setSubmittedPresentationKeys({});
+      return;
+    }
+
+    const ratingsQuery = query(collection(db, 'ratings'), where('raterUserId', '==', userId));
+    const unsub = onSnapshot(ratingsQuery, (snapshot) => {
+      const nextSubmittedKeys = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.presentationKey) {
+          nextSubmittedKeys[data.presentationKey] = true;
+        }
+      });
+      setSubmittedPresentationKeys(nextSubmittedKeys);
+    }, (err) => {
+      console.error('讀取個人提交紀錄失敗：', err);
+    });
+
+    return () => unsub();
+  }, [userId]);
+
   // 線上人數：簡易即時狀態（onlineUsers 集合）
   useEffect(() => {
     if (!userId) return;
@@ -635,6 +673,13 @@ export default function App() {
         return;
       }
       if (bulkSubmitting) return;
+
+      const presentationKey = buildPresentationKey(selectedRoom, presentation);
+      if (!isAdminUser && submittedPresentationKeys[presentationKey]) {
+        alert('這份評分您已提交過，一般使用者每位報告只能送出一次。');
+        return;
+      }
+
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
         alert('請完成所有 4 項評分');
@@ -643,7 +688,8 @@ export default function App() {
 
       updateDraft(idx, (prev) => ({ ...prev, submitting: true }));
       try {
-        await addDoc(collection(db, 'ratings'), {
+        const ratingData = {
+          presentationKey,
           roomId: selectedRoom,
           presenter: presentation.presenter,
           topic: presentation.topic,
@@ -655,7 +701,13 @@ export default function App() {
           raterName: userProfile.displayName,
           raterEmail: userProfile.email,
           anonymousUserId: userId,
-        });
+        };
+
+        if (isAdminUser) {
+          await addDoc(collection(db, 'ratings'), ratingData);
+        } else {
+          await setDoc(doc(db, 'ratings', buildRatingDocId(userId, presentationKey)), ratingData);
+        }
 
         updateDraft(idx, (prev) => ({
           ...prev,
@@ -671,7 +723,7 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, submitting: false }));
       }
     },
-    [bulkSubmitting, getDraft, selectedRoom, updateDraft, userId, userProfile]
+    [bulkSubmitting, getDraft, isAdminUser, selectedRoom, submittedPresentationKeys, updateDraft, userId, userProfile]
   );
 
   const handleSubmitAllPresentations = useCallback(async () => {
@@ -686,11 +738,21 @@ export default function App() {
     }
 
     const validItems = currentRoom.presentations
-      .map((presentation, idx) => ({ presentation, idx, draft: getDraft(idx) }))
-      .filter(({ draft }) => Object.values(draft.scores).every((v) => v > 0));
+      .map((presentation, idx) => ({
+        presentation,
+        idx,
+        draft: getDraft(idx),
+        presentationKey: buildPresentationKey(selectedRoom, presentation),
+      }))
+      .filter(({ draft, presentationKey }) => {
+        const isComplete = Object.values(draft.scores).every((v) => v > 0);
+        if (!isComplete) return false;
+        if (isAdminUser) return true;
+        return !submittedPresentationKeys[presentationKey];
+      });
 
     if (validItems.length === 0) {
-      alert('尚未有可提交的完整評分（需完成 4 項分數）');
+      alert(isAdminUser ? '尚未有可提交的完整評分（需完成 4 項分數）' : '尚未有可提交的完整評分，或這些報告您已經提交過。');
       return;
     }
 
@@ -699,9 +761,10 @@ export default function App() {
     const failedNames = [];
     try {
       for (const item of validItems) {
-        const { presentation, idx, draft } = item;
+        const { presentation, idx, draft, presentationKey } = item;
         try {
-          await addDoc(collection(db, 'ratings'), {
+          const ratingData = {
+            presentationKey,
             roomId: selectedRoom,
             presenter: presentation.presenter,
             topic: presentation.topic,
@@ -713,7 +776,13 @@ export default function App() {
             raterName: userProfile.displayName,
             raterEmail: userProfile.email,
             anonymousUserId: userId,
-          });
+          };
+
+          if (isAdminUser) {
+            await addDoc(collection(db, 'ratings'), ratingData);
+          } else {
+            await setDoc(doc(db, 'ratings', buildRatingDocId(userId, presentationKey)), ratingData);
+          }
           updateDraft(idx, (prev) => ({
             ...prev,
             scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
@@ -742,7 +811,7 @@ export default function App() {
     } finally {
       setBulkSubmitting(false);
     }
-  }, [anyIndividualSubmitting, currentRoom, getDraft, selectedRoom, updateDraft, userId, userProfile]);
+  }, [anyIndividualSubmitting, currentRoom, getDraft, isAdminUser, selectedRoom, submittedPresentationKeys, updateDraft, userId, userProfile]);
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -865,6 +934,7 @@ export default function App() {
       const headers = [
         'roomId',
         'roomName',
+        'presentationKey',
         'presenter',
         'topic',
         'session',
@@ -889,6 +959,7 @@ export default function App() {
         const values = [
           r.roomId || '',
           room?.name || '',
+          r.presentationKey || '',
           r.presenter || '',
           r.topic || '',
           r.session || '',
@@ -1083,7 +1154,9 @@ export default function App() {
 
         {currentRoom && currentRoom.presentations.map((presentation, idx) => {
           const draft = getDraft(idx);
-          const rowLocked = bulkSubmitting || draft.submitting;
+          const presentationKey = buildPresentationKey(selectedRoom, presentation);
+          const alreadySubmitted = !isAdminUser && submittedPresentationKeys[presentationKey];
+          const rowLocked = bulkSubmitting || draft.submitting || alreadySubmitted;
           return (
             <div key={`${presentation.presenter}-${idx}`} style={styles.card}>
               <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginBottom: 12 }}>
@@ -1138,6 +1211,11 @@ export default function App() {
                 onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
                 onBlur={(e) => (e.target.style.borderColor = '#e0e7ff')}
               />
+              {alreadySubmitted && (
+                <div style={{ fontSize: '0.8rem', color: '#2e7d32', background: '#e8f5e9', padding: '8px 10px', borderRadius: 8, marginTop: 8 }}>
+                  您已提交過這位報告者的評分；一般使用者每位報告只能填一次。
+                </div>
+              )}
               <button
                 type="button"
                 style={{
@@ -1157,13 +1235,13 @@ export default function App() {
                 style={{
                   ...styles.primaryBtn,
                   opacity: bulkSubmitting || draft.submitting ? 0.7 : 1,
-                  cursor: bulkSubmitting || draft.submitting ? 'not-allowed' : 'pointer',
+                  cursor: rowLocked ? 'not-allowed' : 'pointer',
                 }}
                 onClick={() => handleSubmitForPresentation(presentation, idx)}
-                disabled={bulkSubmitting || draft.submitting}
+                disabled={rowLocked}
               >
                 <Send size={18} />
-                {draft.submitting ? '提交中…' : `提交 ${presentation.presenter} 評分`}
+                {draft.submitting ? '提交中…' : alreadySubmitted ? '已提交' : `提交 ${presentation.presenter} 評分`}
               </button>
             </div>
           );
