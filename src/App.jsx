@@ -1237,24 +1237,6 @@ export default function App() {
             </select>
           )}
 
-          {currentRoom && selectedPresentationIdx !== '' && (
-            <button
-              style={{
-                ...styles.primaryBtn,
-                marginTop: 10,
-                marginBottom: 0,
-                opacity: 1,
-                cursor: 'pointer',
-              }}
-              onClick={() => {
-                const target = document.getElementById('rating-page');
-                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            >
-              <Send size={18} />
-              進入評分頁面
-            </button>
-          )}
         </div>
 
         {currentRoom && currentPresentation && (() => {
