@@ -330,7 +330,7 @@ const styles = {
     boxSizing: 'border-box',
   },
   primaryBtn: {
-    width: '100%',
+    width: 'min(100%, 360px)',
     padding: '11px 12px',
     background: 'linear-gradient(90deg, #1a73e8 0%, #0d47a1 100%)',
     color: '#fff',
@@ -345,6 +345,8 @@ const styles = {
     gap: 8,
     transition: 'opacity 0.2s, transform 0.1s',
     marginTop: 8,
+    marginLeft: 'auto',
+    marginRight: 'auto',
   },
   aiBtn: {
     padding: '8px 12px',
@@ -1210,16 +1212,16 @@ export default function App() {
             <option value="en">English</option>
           </select>
           {isAdminUser && (
-            <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleAdminLogout}>
+            <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleAdminLogout}>
               <LogOut size={16} />
               {t('logout')}
             </button>
           )}
-          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenLeaderboard}>
+          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenLeaderboard}>
             <BarChart3 size={16} />
             {t('leaderboard')}
           </button>
-          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenAdmin}>
+          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenAdmin}>
             <Users size={16} />
             {t('admin')}
           </button>
@@ -1403,7 +1405,7 @@ export default function App() {
                 type="button"
                 style={{
                   ...styles.aiBtn,
-                  ...(isMobile ? { width: '100%', justifyContent: 'center' } : {}),
+                  ...(isMobile ? { width: '100%', justifyContent: 'center', padding: '6px 9px', fontSize: '0.74rem' } : {}),
                   opacity: draft.aiLoading || rowLocked ? 0.7 : 1,
                   cursor: draft.aiLoading || rowLocked ? 'not-allowed' : 'pointer',
                 }}
@@ -1418,7 +1420,7 @@ export default function App() {
                 type="button"
                 style={{
                   ...styles.primaryBtn,
-                  ...(isMobile ? { padding: '12px', fontSize: '0.95rem' } : {}),
+                  ...(isMobile ? { padding: '9px 10px', fontSize: '0.82rem' } : {}),
                   opacity: rowLocked ? 0.7 : 1,
                   cursor: rowLocked ? 'not-allowed' : 'pointer',
                 }}
@@ -1583,8 +1585,8 @@ export default function App() {
                     background: 'rgba(26,115,232,0.1)',
                     border: '1px solid rgba(26,115,232,0.35)',
                     color: '#1a73e8',
-                    padding: isMobile ? '5px 8px' : '6px 10px',
-                    fontSize: isMobile ? '0.74rem' : '0.8rem',
+                    padding: isMobile ? '4px 6px' : '6px 10px',
+                    fontSize: isMobile ? '0.68rem' : '0.8rem',
                   }}
                   onClick={() => navigateToMainPage()}
                   title="返回一般評分頁"
@@ -1598,8 +1600,8 @@ export default function App() {
                     background: 'rgba(26,115,232,0.1)',
                     border: '1px solid rgba(26,115,232,0.35)',
                     color: '#1a73e8',
-                    padding: isMobile ? '5px 8px' : '6px 10px',
-                    fontSize: isMobile ? '0.74rem' : '0.8rem',
+                    padding: isMobile ? '4px 6px' : '6px 10px',
+                    fontSize: isMobile ? '0.68rem' : '0.8rem',
                   }}
                   onClick={handleAdminLogout}
                   title="登出目前帳號"
@@ -1634,12 +1636,12 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: isMobile ? '5px 8px' : '6px 10px',
+                      padding: isMobile ? '4px 6px' : '6px 10px',
                       borderRadius: 8,
                       border: '1px solid #1a73e8',
                       background: csvExporting || clearingRatings || !adminRatings.length ? '#e3f2fd' : '#fff',
                       color: '#1a73e8',
-                      fontSize: isMobile ? '0.74rem' : '0.8rem',
+                      fontSize: isMobile ? '0.68rem' : '0.8rem',
                       cursor: csvExporting || clearingRatings || !adminRatings.length ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -1654,12 +1656,12 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: isMobile ? '5px 8px' : '6px 10px',
+                      padding: isMobile ? '4px 6px' : '6px 10px',
                       borderRadius: 8,
                       border: '1px solid #d32f2f',
                       background: clearingRatings || csvExporting || !adminRatings.length ? '#ffebee' : '#fff',
                       color: '#c62828',
-                      fontSize: isMobile ? '0.74rem' : '0.8rem',
+                      fontSize: isMobile ? '0.68rem' : '0.8rem',
                       cursor: clearingRatings || csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
                     }}
                     title="永久刪除所有投票紀錄"
