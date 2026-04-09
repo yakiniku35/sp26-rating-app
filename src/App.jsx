@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
-import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays } from 'lucide-react';
+import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2 } from 'lucide-react';
 
 // Config & Constants
 import { db, auth, googleProvider } from './config/firebase';
@@ -771,6 +771,28 @@ export default function App() {
     }
   };
 
+  const handleDeleteRating = async (ratingId) => {
+    if (!isAdminUser) {
+      alert('只有管理員可以刪除評分資料');
+      return;
+    }
+
+    if (!window.confirm('確定要刪除這筆評分資料嗎？此操作無法復原。')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'ratings', ratingId));
+    } catch (err) {
+      console.error('刪除評分失敗：', err);
+      if (err?.code === 'permission-denied') {
+        alert('刪除失敗：目前帳號沒有刪除權限，請確認為管理員且 Firestore 規則已發布。');
+      } else {
+        alert('刪除評分失敗，請稍後再試。');
+      }
+    }
+  };
+
   const handleAdminScoreAction = async (rating, action) => {
     try {
       const currentScores = rating.scores || {};
@@ -1265,13 +1287,13 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <BarChart3 size={16} color="#1a73e8" />
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '1.1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <BarChart3 size={20} color="#1a73e8" />
                   投票紀錄 Dashboard
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={handleExportCSV}
@@ -1280,16 +1302,17 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: isMobile ? '4px 6px' : '6px 10px',
+                      padding: isMobile ? '4px 6px' : '8px 14px',
                       borderRadius: 8,
                       border: '1px solid #1a73e8',
                       background: csvExporting || clearingRatings || !adminRatings.length ? '#e3f2fd' : '#fff',
                       color: '#1a73e8',
-                      fontSize: isMobile ? '0.68rem' : '0.8rem',
+                      fontSize: isMobile ? '0.68rem' : '0.85rem',
                       cursor: csvExporting || clearingRatings || !adminRatings.length ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
                     }}
                   >
-                    <Download size={14} />
+                    <Download size={16} />
                     {csvExporting ? '匯出中…' : '匯出 CSV'}
                   </button>
                   <button
@@ -1300,13 +1323,14 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: isMobile ? '4px 6px' : '6px 10px',
+                      padding: isMobile ? '4px 6px' : '8px 14px',
                       borderRadius: 8,
                       border: '1px solid #d32f2f',
                       background: clearingRatings || csvExporting || !adminRatings.length ? '#ffebee' : '#fff',
                       color: '#c62828',
-                      fontSize: isMobile ? '0.68rem' : '0.8rem',
+                      fontSize: isMobile ? '0.68rem' : '0.85rem',
                       cursor: clearingRatings || csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
                     }}
                     title="永久刪除所有投票紀錄"
                   >
@@ -1316,20 +1340,22 @@ export default function App() {
               </div>
 
               {/* 搜尋與篩選區 */}
-              <div style={{ marginBottom: 12, padding: isMobile ? '10px' : '12px', border: '1px solid #e0e7ff', borderRadius: 10, background: '#f8fbff' }}>
-                <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#1a237e', fontWeight: 700, marginBottom: 10 }}>🔍 搜尋與篩選</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div style={{ marginBottom: 16, padding: isMobile ? '12px' : '16px 20px', border: '1px solid #e0e7ff', borderRadius: 12, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', color: '#1a237e', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  🔍 搜尋與篩選
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
                   <input
                     type="text"
                     placeholder="搜尋報告者、題目、評分者或評論..."
                     value={adminSearchText}
                     onChange={(e) => setAdminSearchText(e.target.value)}
                     style={{
-                      flex: isMobile ? '1 1 100%' : '1 1 300px',
-                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      flex: isMobile ? '1 1 100%' : '1 1 350px',
+                      padding: isMobile ? '8px 10px' : '10px 14px',
                       border: '1px solid #d0d7de',
                       borderRadius: 8,
-                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      fontSize: isMobile ? '0.82rem' : '0.9rem',
                       outline: 'none',
                     }}
                   />
@@ -1337,11 +1363,11 @@ export default function App() {
                     value={adminRoomFilter}
                     onChange={(e) => setAdminRoomFilter(e.target.value)}
                     style={{
-                      flex: isMobile ? '1 1 100%' : '0 0 180px',
-                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      flex: isMobile ? '1 1 100%' : '0 0 200px',
+                      padding: isMobile ? '8px 10px' : '10px 14px',
                       border: '1px solid #d0d7de',
                       borderRadius: 8,
-                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      fontSize: isMobile ? '0.82rem' : '0.9rem',
                       outline: 'none',
                       cursor: 'pointer',
                     }}
@@ -1355,11 +1381,11 @@ export default function App() {
                     value={adminSortBy}
                     onChange={(e) => setAdminSortBy(e.target.value)}
                     style={{
-                      flex: isMobile ? '1 1 100%' : '0 0 150px',
-                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      flex: isMobile ? '1 1 100%' : '0 0 170px',
+                      padding: isMobile ? '8px 10px' : '10px 14px',
                       border: '1px solid #d0d7de',
                       borderRadius: 8,
-                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      fontSize: isMobile ? '0.82rem' : '0.9rem',
                       outline: 'none',
                       cursor: 'pointer',
                     }}
@@ -1378,12 +1404,12 @@ export default function App() {
                         setAdminRoomFilter('ALL');
                       }}
                       style={{
-                        padding: isMobile ? '8px 12px' : '9px 14px',
+                        padding: isMobile ? '8px 12px' : '10px 16px',
                         border: '1px solid #ef9a9a',
                         background: '#ffebee',
                         color: '#c62828',
                         borderRadius: 8,
-                        fontSize: isMobile ? '0.78rem' : '0.82rem',
+                        fontSize: isMobile ? '0.78rem' : '0.85rem',
                         cursor: 'pointer',
                         fontWeight: 500,
                       }}
@@ -1392,7 +1418,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.74rem', color: '#546e7a' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#546e7a' }}>
                   {filteredAndSortedAdminRatings.length === adminRatings.length
                     ? `顯示全部 ${adminRatings.length} 筆資料`
                     : `篩選後顯示 ${filteredAndSortedAdminRatings.length} / ${adminRatings.length} 筆`}
@@ -1402,29 +1428,36 @@ export default function App() {
               {adminLoading ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>載入中…</div>
               ) : filteredAndSortedAdminRatings.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>沒有符合條件的評分資料</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.95rem', background: '#fff', borderRadius: 12, border: '1px solid #eee' }}>沒有符合條件的評分資料</div>
               ) : (
                 <>
-                <div style={{ maxHeight: isMobile ? 400 : 450, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.76rem' : '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f5f5f5' }}>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>時間</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>評分帳號</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>教室</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>報告者</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>題目</th>
-                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>專業</th>
-                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>流暢</th>
-                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>視覺</th>
-                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>啟發</th>
-                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>平均</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>回饋</th>
-                        <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>分數管理</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedRatings.map((r) => {
+                <div style={{ 
+                  overflowX: 'auto', 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: 12, 
+                  background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ maxHeight: isMobile ? 400 : 'calc(100vh - 480px)', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.76rem' : '0.88rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8f9fa' }}>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>時間</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>評分帳號</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>教室</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>報告者</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, minWidth: '200px' }}>題目</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>專業</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>流暢</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>視覺</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>啟發</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>平均</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, minWidth: '180px' }}>回饋</th>
+                          <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRatings.map((r) => {
                         const room = rooms.find((x) => x.id === r.roomId);
                         const ts =
                           r.timestamp && typeof r.timestamp.toDate === 'function'
@@ -1435,66 +1468,81 @@ export default function App() {
                           : '';
                         const avgScore = ((r.scores?.professionalism || 0) + (r.scores?.fluency || 0) + (r.scores?.visual || 0) + (r.scores?.inspiration || 0)) / 4;
                         return (
-                          <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{timeStr}</td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
+                          <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', ':hover': { background: '#f8f9fa' } }}>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
                               {r.raterName || r.raterEmail || (r.raterUserId ? `${r.raterUserId.slice(0, 8)}…` : '-')}
                             </td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
-                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.professionalism}</td>
-                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.fluency}</td>
-                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.visual}</td>
-                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.inspiration}</td>
-                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 700, color: avgScore >= 8 ? '#2e7d32' : avgScore >= 6 ? '#1976d2' : '#ef6c00' }}>{avgScore.toFixed(1)}</td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
-                            <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleAdminScoreAction(r, 'inc')}
-                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', marginRight: 4, fontWeight: 500 }}
-                              >
-                                +1
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleAdminScoreAction(r, 'dec')}
-                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', marginRight: 4, fontWeight: 500 }}
-                              >
-                                -1
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!window.confirm('確定要把這筆投票四項分數全部重置為 0 嗎？')) return;
-                                  handleAdminScoreAction(r, 'reset');
-                                }}
-                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: isMobile ? '4px 8px' : '3px 8px', fontSize: isMobile ? '0.7rem' : '0.72rem', cursor: 'pointer', fontWeight: 500 }}
-                              >
-                                重置
-                              </button>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap', fontWeight: 500 }}>{r.presenter}</td>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.professionalism}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.fluency}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.visual}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 700, color: avgScore >= 8 ? '#2e7d32' : avgScore >= 6 ? '#1976d2' : '#ef6c00' }}>{avgScore.toFixed(1)}</td>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
+                            <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'flex', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminScoreAction(r, 'inc')}
+                                  style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: isMobile ? '5px 10px' : '6px 12px', fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: 'pointer', fontWeight: 500 }}
+                                  title="所有分數 +1"
+                                >
+                                  +1
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminScoreAction(r, 'dec')}
+                                  style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: isMobile ? '5px 10px' : '6px 12px', fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: 'pointer', fontWeight: 500 }}
+                                  title="所有分數 -1"
+                                >
+                                  -1
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!window.confirm('確定要把這筆投票四項分數全部重置為 0 嗎？')) return;
+                                    handleAdminScoreAction(r, 'reset');
+                                  }}
+                                  style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: isMobile ? '5px 10px' : '6px 12px', fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: 'pointer', fontWeight: 500 }}
+                                  title="重置所有分數為 0"
+                                >
+                                  重置
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRating(r.id)}
+                                  style={{ border: '1px solid #e57373', background: '#ffebee', color: '#d32f2f', borderRadius: 6, padding: isMobile ? '5px 10px' : '6px 12px', fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}
+                                  title="刪除此筆評分"
+                                >
+                                  <Trash2 size={14} />
+                                  刪除
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
 
                 {/* 分頁控制 */}
                 {filteredAndSortedAdminRatings.length > 0 && (
-                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: isMobile ? '8px' : '10px', background: '#f8f9fa', borderRadius: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '0.78rem' : '0.85rem' }}>
-                      <span>每頁顯示：</span>
+                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: isMobile ? '10px 12px' : '14px 16px', background: '#fff', borderRadius: 10, border: '1px solid #e0e0e0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: isMobile ? '0.78rem' : '0.88rem' }}>
+                      <span style={{ fontWeight: 500 }}>每頁顯示：</span>
                       <select
                         value={adminPageSize}
                         onChange={(e) => setAdminPageSize(Number(e.target.value))}
                         style={{
-                          padding: '4px 8px',
+                          padding: '6px 10px',
                           border: '1px solid #d0d7de',
                           borderRadius: 6,
-                          fontSize: isMobile ? '0.78rem' : '0.82rem',
+                          fontSize: isMobile ? '0.78rem' : '0.85rem',
                           cursor: 'pointer',
                         }}
                       >
@@ -1505,23 +1553,24 @@ export default function App() {
                       </select>
                     </div>
                     {adminPageSize > 0 && totalPages > 1 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button
                           type="button"
                           onClick={() => setAdminCurrentPage(Math.max(1, adminCurrentPage - 1))}
                           disabled={adminCurrentPage === 1}
                           style={{
-                            padding: '4px 10px',
+                            padding: '6px 14px',
                             border: '1px solid #d0d7de',
                             background: adminCurrentPage === 1 ? '#f0f0f0' : '#fff',
                             borderRadius: 6,
-                            fontSize: isMobile ? '0.76rem' : '0.8rem',
+                            fontSize: isMobile ? '0.76rem' : '0.85rem',
                             cursor: adminCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                            fontWeight: 500,
                           }}
                         >
                           ← 上一頁
                         </button>
-                        <span style={{ fontSize: isMobile ? '0.78rem' : '0.85rem', padding: '0 8px' }}>
+                        <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', padding: '0 10px', fontWeight: 500 }}>
                           {adminCurrentPage} / {totalPages}
                         </span>
                         <button
@@ -1529,12 +1578,13 @@ export default function App() {
                           onClick={() => setAdminCurrentPage(Math.min(totalPages, adminCurrentPage + 1))}
                           disabled={adminCurrentPage === totalPages}
                           style={{
-                            padding: '4px 10px',
+                            padding: '6px 14px',
                             border: '1px solid #d0d7de',
                             background: adminCurrentPage === totalPages ? '#f0f0f0' : '#fff',
                             borderRadius: 6,
-                            fontSize: isMobile ? '0.76rem' : '0.8rem',
+                            fontSize: isMobile ? '0.76rem' : '0.85rem',
                             cursor: adminCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                            fontWeight: 500,
                           }}
                         >
                           下一頁 →
