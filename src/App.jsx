@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
-import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut } from 'lucide-react';
+import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
 // const firebaseConfig = {
@@ -26,6 +26,7 @@ const firebaseConfig = {
 };
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
+const EVENT_SCHEDULE_URL = process.env.REACT_APP_EVENT_SCHEDULE_URL || '';
 
 const app = initializeApp(firebaseConfig);
 // Firebase Analytics 需要 `measurementId`，避免未設定時初始化失敗
@@ -1128,6 +1129,14 @@ export default function App() {
     }
   };
 
+  const handleOpenSchedule = useCallback(() => {
+    if (!EVENT_SCHEDULE_URL) {
+      alert('尚未設定本次發表會議程連結');
+      return;
+    }
+    window.open(EVENT_SCHEDULE_URL, '_blank', 'noopener,noreferrer');
+  }, []);
+
   return (
     <div style={styles.app}>
       <header style={styles.header}>
@@ -1200,6 +1209,34 @@ export default function App() {
           </div>
         ) : (
           <>
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            <CalendarDays size={18} color="#1a73e8" />
+            本次發表會議程
+          </div>
+          <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
+            查看本次發表會完整議程與時程安排。
+          </div>
+          <button
+            type="button"
+            style={{
+              ...styles.primaryBtn,
+              marginTop: 0,
+              opacity: EVENT_SCHEDULE_URL ? 1 : 0.7,
+              cursor: EVENT_SCHEDULE_URL ? 'pointer' : 'not-allowed',
+            }}
+            onClick={handleOpenSchedule}
+            disabled={!EVENT_SCHEDULE_URL}
+          >
+            觀看議程連結
+          </button>
+          {!EVENT_SCHEDULE_URL && (
+            <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 8 }}>
+              尚未設定連結，可於環境變數新增 REACT_APP_EVENT_SCHEDULE_URL。
+            </div>
+          )}
+        </div>
+
         <div style={styles.card}>
           <div style={styles.cardTitle}>
             <ChevronDown size={18} color="#1a73e8" />
