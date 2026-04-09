@@ -41,8 +41,11 @@
    ```
    此規則僅允許已登入（含匿名登入）的使用者讀寫，防止未登入者直接存取。
 5. 進入 **Build > Authentication**，在 Sign-in method 中開啟「**匿名 (Anonymous)**」登入
-6. 在「**專案設定 > 一般**」下方找到 SDK 設定，複製 `firebaseConfig` 物件的值
-7. 開啟 `src/App.jsx`，將 `firebaseConfig` 中的 placeholder 替換為您的實際設定值
+6. 若要使用管理員 Google 登入，再另外開啟「**Google**」登入
+7. 若要使用管理員 Email 登入，再另外開啟「**Email/Password**」登入
+8. 在 Firestore 建立 `admins` collection，並以管理員帳號的 `UID` 當作文件 ID 建立文件（內容可空白），只有存在於這裡的帳號可開啟管理員 Dashboard
+9. 在「**專案設定 > 一般**」下方找到 SDK 設定，複製 `firebaseConfig` 物件的值
+10. 開啟 `src/App.jsx`，將 `firebaseConfig` 中的 placeholder 替換為您的實際設定值
 
 ### Step 3：設定 Gemini API Key
 
@@ -105,11 +108,15 @@ sp26-rating-app/
 ### 前端查看排行榜
 點擊 App 右上角的「📊 排行榜」圖示，即可即時看到所有報告者的平均分數排行。
 
+### 管理員登入
+1. 在 Firebase Authentication 啟用 Google 或 Email/Password 提供者
+2. 先用該帳號完成一次登入，取得其 `UID`
+3. 在 Firestore 建立 `admins/{uid}` 文件
+4. 回到 App 右上角點擊「管理員」，即可用 Google 或 Email/Password 登入
+
 ### 後台匯出資料
-1. 前往 [Firebase Console](https://console.firebase.google.com/)
-2. 進入您的專案 > **Firestore Database**
-3. 選擇 `ratings` collection
-4. 點擊右上角「⋮」> 「匯出資料」，可匯出 JSON 格式後轉換為 Excel
+1. 使用管理員帳號登入 App 內建 Dashboard
+2. 點擊「匯出 CSV」即可下載評分資料
 
 ---
 
