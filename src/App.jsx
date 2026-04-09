@@ -30,7 +30,7 @@ const EVENT_SCHEDULE_URL = process.env.REACT_APP_EVENT_SCHEDULE_URL || '';
 
 const I18N = {
   zh: {
-    appTitle: 'SP26 成果發表會',
+    appTitle: '2026成果發表會',
     subAdmin: '管理員模式',
     subUser: '即時評分系統（匿名評分）',
     leaderboard: '排行榜',
