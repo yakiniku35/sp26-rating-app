@@ -396,8 +396,8 @@ export default function App() {
   const [rooms, setRooms] = useState(ROOMS);
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
+  const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
   const [presentationDrafts, setPresentationDrafts] = useState({});
-  const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -687,6 +687,10 @@ export default function App() {
   }, [isAdminPage, isAdminUser]);
 
   const currentRoom = rooms.find((r) => r.id === selectedRoom);
+  const currentPresentation =
+    currentRoom && selectedPresentationIdx !== ''
+      ? currentRoom.presentations[Number(selectedPresentationIdx)]
+      : null;
 
   const getDraft = useCallback(
     (idx) =>
@@ -712,14 +716,8 @@ export default function App() {
     });
   }, []);
 
-  const anyIndividualSubmitting = useMemo(
-    () => Object.values(presentationDrafts).some((d) => d && d.submitting),
-    [presentationDrafts]
-  );
-
   const handleGenerateAIForPresentation = useCallback(
     async (presentation, idx) => {
-      if (bulkSubmitting) return;
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
         alert('請先完成 4 項評分，再產生 AI 評語');
@@ -735,7 +733,7 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, aiLoading: false }));
       }
     },
-    [bulkSubmitting, getDraft, updateDraft]
+    [getDraft, updateDraft]
   );
 
   const handleSubmitForPresentation = useCallback(
@@ -744,7 +742,6 @@ export default function App() {
         alert('請先使用 Google 登入後再評分');
         return;
       }
-      if (bulkSubmitting) return;
 
       const presentationKey = buildPresentationKey(selectedRoom, presentation);
       if (!isAdminUser && submittedPresentationKeys[presentationKey]) {
@@ -795,95 +792,8 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, submitting: false }));
       }
     },
-    [bulkSubmitting, getDraft, isAdminUser, selectedRoom, submittedPresentationKeys, updateDraft, userId, userProfile]
+    [getDraft, isAdminUser, selectedRoom, submittedPresentationKeys, updateDraft, userId, userProfile]
   );
-
-  const handleSubmitAllPresentations = useCallback(async () => {
-    if (!userId || !userProfile) {
-      alert('請先使用 Google 登入後再評分');
-      return;
-    }
-    if (!currentRoom) return;
-    if (anyIndividualSubmitting) {
-      alert('請待單筆提交完成後再使用一鍵提交');
-      return;
-    }
-
-    const validItems = currentRoom.presentations
-      .map((presentation, idx) => ({
-        presentation,
-        idx,
-        draft: getDraft(idx),
-        presentationKey: buildPresentationKey(selectedRoom, presentation),
-      }))
-      .filter(({ draft, presentationKey }) => {
-        const isComplete = Object.values(draft.scores).every((v) => v > 0);
-        if (!isComplete) return false;
-        if (isAdminUser) return true;
-        return !submittedPresentationKeys[presentationKey];
-      });
-
-    if (validItems.length === 0) {
-      alert(isAdminUser ? '尚未有可提交的完整評分（需完成 4 項分數）' : '尚未有可提交的完整評分，或這些報告您已經提交過。');
-      return;
-    }
-
-    setBulkSubmitting(true);
-    let successCount = 0;
-    const failedNames = [];
-    try {
-      for (const item of validItems) {
-        const { presentation, idx, draft, presentationKey } = item;
-        try {
-          const ratingData = {
-            presentationKey,
-            roomId: selectedRoom,
-            presenter: presentation.presenter,
-            topic: presentation.topic,
-            session: presentation.session,
-            scores: draft.scores,
-            comment: draft.comment,
-            timestamp: serverTimestamp(),
-            raterUserId: userId,
-            raterName: userProfile.displayName,
-            raterEmail: userProfile.email,
-            anonymousUserId: userId,
-          };
-
-          if (isAdminUser) {
-            await addDoc(collection(db, 'ratings'), ratingData);
-          } else {
-            await setDoc(doc(db, 'ratings', buildRatingDocId(userId, presentationKey)), ratingData);
-          }
-          updateDraft(idx, (prev) => ({
-            ...prev,
-            scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
-            comment: '',
-            submitting: false,
-          }));
-          successCount += 1;
-        } catch (err) {
-          console.error('一鍵提交單筆失敗：', presentation.presenter, err);
-          failedNames.push(presentation.presenter);
-        }
-      }
-
-      if (successCount > 0) {
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      }
-
-      let msg = `一鍵提交完成：成功 ${successCount} 筆`;
-      if (failedNames.length > 0) {
-        msg += `，失敗 ${failedNames.length} 筆`;
-        const preview = failedNames.slice(0, 5).join('、');
-        msg += `\n失敗：${preview}${failedNames.length > 5 ? '…' : ''}`;
-      }
-      alert(msg);
-    } finally {
-      setBulkSubmitting(false);
-    }
-  }, [anyIndividualSubmitting, currentRoom, getDraft, isAdminUser, selectedRoom, submittedPresentationKeys, updateDraft, userId, userProfile]);
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -1291,6 +1201,7 @@ export default function App() {
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
+              setSelectedPresentationIdx('');
               setPresentationDrafts({});
             }}
           >
@@ -1307,35 +1218,72 @@ export default function App() {
           )}
           {currentRoom && (
             <div style={{ fontSize: '0.8rem', color: '#1565c0', background: '#e3f2fd', padding: '8px 12px', borderRadius: 8, marginTop: 6 }}>
-              已展開此教室全部評分表，共 {currentRoom.presentations.length} 位同學
+              請再選擇要評分的報告者，共 {currentRoom.presentations.length} 位同學
             </div>
           )}
 
           {currentRoom && (
+            <select
+              style={{ ...styles.select, marginTop: 10, marginBottom: 0 }}
+              value={selectedPresentationIdx}
+              onChange={(e) => setSelectedPresentationIdx(e.target.value)}
+            >
+              <option value="">── 請選擇學生 / 題目 ──</option>
+              {currentRoom.presentations.map((presentation, idx) => (
+                <option key={`${presentation.presenter}-${idx}`} value={String(idx)}>
+                  [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter} - {presentation.topic}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {currentRoom && selectedPresentationIdx !== '' && (
             <button
               style={{
                 ...styles.primaryBtn,
                 marginTop: 10,
                 marginBottom: 0,
-                opacity: bulkSubmitting || anyIndividualSubmitting ? 0.7 : 1,
-                cursor: bulkSubmitting || anyIndividualSubmitting ? 'not-allowed' : 'pointer',
+                opacity: 1,
+                cursor: 'pointer',
               }}
-              onClick={handleSubmitAllPresentations}
-              disabled={bulkSubmitting || anyIndividualSubmitting}
+              onClick={() => {
+                const target = document.getElementById('rating-page');
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             >
               <Send size={18} />
-              {bulkSubmitting ? '一鍵提交中…' : '一鍵全部提交（已填完者）'}
+              進入評分頁面
             </button>
           )}
         </div>
 
-        {currentRoom && currentRoom.presentations.map((presentation, idx) => {
+        {currentRoom && currentPresentation && (() => {
+          const idx = Number(selectedPresentationIdx);
+          const presentation = currentPresentation;
           const draft = getDraft(idx);
           const presentationKey = buildPresentationKey(selectedRoom, presentation);
           const alreadySubmitted = !isAdminUser && submittedPresentationKeys[presentationKey];
-          const rowLocked = bulkSubmitting || draft.submitting || alreadySubmitted;
+          const rowLocked = draft.submitting || alreadySubmitted;
           return (
-            <div key={`${presentation.presenter}-${idx}`} style={styles.card}>
+            <div id="rating-page" key={`${presentation.presenter}-${idx}`} style={styles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: '0.82rem', color: '#1a73e8', fontWeight: 600 }}>評分頁面</div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPresentationIdx('')}
+                  style={{
+                    border: '1px solid #90caf9',
+                    background: '#e3f2fd',
+                    color: '#1565c0',
+                    borderRadius: 8,
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  重新選擇學生
+                </button>
+              </div>
               <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginBottom: 12 }}>
                 <span style={{ fontWeight: 600 }}>
                   {presentation.session ? `[${presentation.session}${presentation.time ? ` ${presentation.time}` : ''}] ` : ''}
@@ -1411,7 +1359,7 @@ export default function App() {
                 type="button"
                 style={{
                   ...styles.primaryBtn,
-                  opacity: bulkSubmitting || draft.submitting ? 0.7 : 1,
+                  opacity: rowLocked ? 0.7 : 1,
                   cursor: rowLocked ? 'not-allowed' : 'pointer',
                 }}
                 onClick={() => handleSubmitForPresentation(presentation, idx)}
@@ -1422,7 +1370,7 @@ export default function App() {
               </button>
             </div>
           );
-        })}
+        })()}
 
         <div style={styles.footer}>
           <p>© 2026 SP26 成果發表會 · AI 評分系統</p>
