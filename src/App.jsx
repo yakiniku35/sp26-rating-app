@@ -1230,19 +1230,19 @@ export default function App() {
 
             {/* 統計卡片區 */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12, marginBottom: 14 }}>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff' }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#1976d2', color: '#fff' }}>
                 <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>總評分數</div>
                 <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.totalRatings}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: '#fff' }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#388e3c', color: '#fff' }}>
                 <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>參與人數</div>
                 <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.uniqueRaters}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: '#fff' }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#f57c00', color: '#fff' }}>
                 <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>平均分數</div>
                 <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.avgScore.toFixed(2)}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: '#fff' }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#7b1fa2', color: '#fff' }}>
                 <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>顯示筆數</div>
                 <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{filteredAndSortedAdminRatings.length}</div>
               </div>
