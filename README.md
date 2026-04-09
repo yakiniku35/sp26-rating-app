@@ -10,7 +10,7 @@
 -  **三教室分類**：A646（地緣政治）、A604（心理醫療）、A605（AI 技術）
 -  **5 項評分指標**：內容專業度、表達流暢度、視覺設計感、整體啟發性（各 1–10 分），以及一句話文字回饋
 -  **AI 智慧評語**：使用 Gemini 2.0 Flash 自動產生繁體中文鼓勵評語
--  **匿名評分**：Firebase Anonymous Auth，無需註冊即可評分
+-  **Google 登入評分**：所有評分者皆需先使用 Google 登入，避免重複投票
 -  **即時雲端儲存**：評分即時存入 Firestore
 -  **即時排行榜**：按平均分數即時排名
 
@@ -39,10 +39,10 @@
      }
    }
    ```
-   此規則僅允許已登入（含匿名登入）的使用者讀寫，防止未登入者直接存取。
-5. 進入 **Build > Authentication**，在 Sign-in method 中開啟「**匿名 (Anonymous)**」登入
-6. 若要使用管理員 Google 登入，再另外開啟「**Google**」登入
-7. 若要使用管理員 Email 登入，再另外開啟「**Email/Password**」登入
+  此規則僅允許已登入的使用者讀寫，防止未登入者直接存取。
+5. 進入 **Build > Authentication**，在 Sign-in method 中開啟「**Google**」登入
+6. 若要使用管理員 Email 登入，再另外開啟「**Email/Password**」登入
+7. 在 **Authentication > Settings > Authorized domains** 加入您的正式網域，例如 Vercel 的 `your-project.vercel.app`
 8. 在 Firestore 建立 `admins` collection，並以管理員帳號的 `UID` 當作文件 ID 建立文件（內容可空白），只有存在於這裡的帳號可開啟管理員 Dashboard
 9. 在「**專案設定 > 一般**」下方找到 SDK 設定，複製 `firebaseConfig` 物件的值
 10. 開啟 `src/App.jsx`，將 `firebaseConfig` 中的 placeholder 替換為您的實際設定值
@@ -108,11 +108,16 @@ sp26-rating-app/
 ### 前端查看排行榜
 點擊 App 右上角的「📊 排行榜」圖示，即可即時看到所有報告者的平均分數排行。
 
+### 評分者登入
+1. 所有同學進入頁面後，需先使用 Google 帳號登入
+2. 若是手機掃 QR Code，系統會自動優先使用 redirect 流程登入
+3. 若出現 Google 登入失敗，請優先檢查 Firebase 是否已啟用 Google，以及目前部署網域是否已加入 Authorized domains
+
 ### 管理員登入
-1. 在 Firebase Authentication 啟用 Google 或 Email/Password 提供者
+1. 管理員也需先使用 Google 或 Email/Password 登入
 2. 先用該帳號完成一次登入，取得其 `UID`
 3. 在 Firestore 建立 `admins/{uid}` 文件
-4. 回到 App 右上角點擊「管理員」，即可用 Google 或 Email/Password 登入
+4. 回到 App 右上角點擊「管理員」，即可驗證並進入 Dashboard
 
 ### 後台匯出資料
 1. 使用管理員帳號登入 App 內建 Dashboard

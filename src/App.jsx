@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut } from 'lucide-react';
 
@@ -36,6 +36,12 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+const GOOGLE_AUTH_ERROR_MESSAGE = 'Google 登入失敗，請確認 Firebase Authentication 已啟用 Google 登入，且已把目前網域加入 Authorized domains。';
+const ADMIN_LOGIN_INTENT_KEY = 'sp26-admin-login-intent';
+
+function prefersRedirectLogin() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent);
+}
 
 const ROOMS = [
   {
@@ -365,6 +371,7 @@ const styles = {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [rooms, setRooms] = useState(ROOMS);
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
@@ -383,13 +390,15 @@ export default function App() {
   const [adminRatings, setAdminRatings] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
 
   const verifyAdminAccess = useCallback(async (user) => {
     const snap = await getDoc(doc(db, 'admins', user.uid));
     if (!snap.exists()) {
-      await signOut(auth);
       alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
       setAdminPassword('');
+      setIsAdminUser(false);
       return false;
     }
 
@@ -400,27 +409,105 @@ export default function App() {
     return true;
   }, []);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        setUserId(null);
-        setIsAdminUser(false);
-        signInAnonymously(auth).catch((err) => console.error('匿名登入失敗：', err));
+  const signInWithGoogle = useCallback(async ({ adminIntent = false } = {}) => {
+    setGoogleLoginLoading(true);
+    if (adminIntent) {
+      window.sessionStorage.setItem(ADMIN_LOGIN_INTENT_KEY, '1');
+    } else {
+      window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+    }
+    try {
+      if (prefersRedirectLogin()) {
+        await signInWithRedirect(auth, googleProvider);
         return;
       }
-      setUserId(user.uid);
-      if (user.isAnonymous) {
-        setIsAdminUser(false);
+
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+          alert(GOOGLE_AUTH_ERROR_MESSAGE);
+          console.error(redirectErr);
+        }
+      } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+        alert(GOOGLE_AUTH_ERROR_MESSAGE);
+        console.error(err);
       } else {
-        getDoc(doc(db, 'admins', user.uid))
-          .then((snap) => setIsAdminUser(snap.exists()))
-          .catch((err) => {
-            console.error('讀取管理員權限失敗：', err);
-            setIsAdminUser(false);
-          });
+        window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
       }
+    } finally {
+      setGoogleLoginLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    getRedirectResult(auth).catch((err) => {
+      if (!active) return;
+      alert(GOOGLE_AUTH_ERROR_MESSAGE);
+      console.error(err);
+      setGoogleLoginLoading(false);
     });
-    return () => unsub();
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!active) return;
+
+      if (!user) {
+        setUserId(null);
+        setUserProfile(null);
+        setIsAdminUser(false);
+        window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+        setAuthReady(true);
+        setGoogleLoginLoading(false);
+        return;
+      }
+
+      setUserId(user.uid);
+      setUserProfile({
+        uid: user.uid,
+        displayName: user.displayName || '',
+        email: user.email || '',
+      });
+
+      getDoc(doc(db, 'admins', user.uid))
+        .then((snap) => {
+          if (!active) return;
+          const allowed = snap.exists();
+          setIsAdminUser(allowed);
+          if (window.sessionStorage.getItem(ADMIN_LOGIN_INTENT_KEY) === '1') {
+            window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+            if (allowed) {
+              setShowAdminLogin(false);
+              setShowAdmin(true);
+            } else {
+              alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
+            }
+          }
+        })
+        .catch((err) => {
+          console.error('讀取管理員權限失敗：', err);
+          if (active) setIsAdminUser(false);
+        })
+        .finally(() => {
+          if (!active) return;
+          setAuthReady(true);
+          setGoogleLoginLoading(false);
+        });
+    });
+
+    return () => {
+      active = false;
+      unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -543,6 +630,10 @@ export default function App() {
 
   const handleSubmitForPresentation = useCallback(
     async (presentation, idx) => {
+      if (!userId || !userProfile) {
+        alert('請先使用 Google 登入後再評分');
+        return;
+      }
       if (bulkSubmitting) return;
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
@@ -560,6 +651,9 @@ export default function App() {
           scores: draft.scores,
           comment: draft.comment,
           timestamp: serverTimestamp(),
+          raterUserId: userId,
+          raterName: userProfile.displayName,
+          raterEmail: userProfile.email,
           anonymousUserId: userId,
         });
 
@@ -577,10 +671,14 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, submitting: false }));
       }
     },
-    [bulkSubmitting, getDraft, selectedRoom, updateDraft, userId]
+    [bulkSubmitting, getDraft, selectedRoom, updateDraft, userId, userProfile]
   );
 
   const handleSubmitAllPresentations = useCallback(async () => {
+    if (!userId || !userProfile) {
+      alert('請先使用 Google 登入後再評分');
+      return;
+    }
     if (!currentRoom) return;
     if (anyIndividualSubmitting) {
       alert('請待單筆提交完成後再使用一鍵提交');
@@ -611,6 +709,9 @@ export default function App() {
             scores: draft.scores,
             comment: draft.comment,
             timestamp: serverTimestamp(),
+            raterUserId: userId,
+            raterName: userProfile.displayName,
+            raterEmail: userProfile.email,
             anonymousUserId: userId,
           });
           updateDraft(idx, (prev) => ({
@@ -641,7 +742,7 @@ export default function App() {
     } finally {
       setBulkSubmitting(false);
     }
-  }, [anyIndividualSubmitting, currentRoom, getDraft, selectedRoom, updateDraft, userId]);
+  }, [anyIndividualSubmitting, currentRoom, getDraft, selectedRoom, updateDraft, userId, userProfile]);
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -704,13 +805,11 @@ export default function App() {
   const handleGoogleAdminLogin = async () => {
     setAdminLoginLoading(true);
     try {
-      const credential = await signInWithPopup(auth, googleProvider);
-      await verifyAdminAccess(credential.user);
-    } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        alert('Google 登入失敗，請確認 Firebase Authentication 已啟用 Google 登入');
-        console.error(err);
+      if (!userId) {
+        await signInWithGoogle({ adminIntent: true });
+        return;
       }
+      await verifyAdminAccess(auth.currentUser);
     } finally {
       setAdminLoginLoading(false);
     }
@@ -775,6 +874,9 @@ export default function App() {
         'inspiration',
         'comment',
         'timestamp',
+        'raterUserId',
+        'raterName',
+        'raterEmail',
         'anonymousUserId',
       ];
 
@@ -796,6 +898,9 @@ export default function App() {
           r.scores?.inspiration ?? '',
           r.comment || '',
           ts,
+          r.raterUserId || '',
+          r.raterName || '',
+          r.raterEmail || '',
           r.anonymousUserId || '',
         ];
         return values
@@ -860,9 +965,22 @@ export default function App() {
       <header style={styles.header}>
         <div>
           <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
-          <div style={styles.headerSub}>AI 智慧評分系統</div>
+          <div style={styles.headerSub}>
+            {userProfile?.displayName ? `Hi, ${userProfile.displayName}` : 'AI 智慧評分系統'}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {!userId ? (
+            <button style={styles.headerBtn} onClick={signInWithGoogle} disabled={googleLoginLoading || !authReady}>
+              <Users size={16} />
+              {googleLoginLoading ? '登入中…' : 'Google 登入'}
+            </button>
+          ) : (
+            <button style={styles.headerBtn} onClick={handleAdminLogout}>
+              <LogOut size={16} />
+              登出
+            </button>
+          )}
           <button style={styles.headerBtn} onClick={handleOpenLeaderboard}>
             <BarChart3 size={16} />
             排行榜
@@ -875,6 +993,45 @@ export default function App() {
       </header>
 
       <main style={styles.main}>
+        {!authReady ? (
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>
+              <Users size={18} color="#1a73e8" />
+              讀取登入狀態中
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#666' }}>請稍候，系統正在確認您的登入狀態。</div>
+          </div>
+        ) : !userId ? (
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>
+              <Users size={18} color="#1a73e8" />
+              請先登入再開始評分
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#555', lineHeight: 1.7, marginBottom: 14 }}>
+              為了避免重複投票並記錄評分者資訊，所有同學都需要先使用 Google 帳號登入後才能送出評分。
+            </div>
+            <button
+              type="button"
+              style={{
+                ...styles.primaryBtn,
+                marginTop: 0,
+                background: '#fff',
+                color: '#222',
+                border: '1px solid #dadce0',
+                opacity: googleLoginLoading ? 0.7 : 1,
+                cursor: googleLoginLoading ? 'not-allowed' : 'pointer',
+              }}
+              onClick={signInWithGoogle}
+              disabled={googleLoginLoading}
+            >
+              {googleLoginLoading ? '登入中…' : '使用 Google 登入後開始評分'}
+            </button>
+            <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 10 }}>
+              如果你是用 Vercel 網址開啟，請確認該網域已加入 Firebase Authorized domains。
+            </div>
+          </div>
+        ) : (
+          <>
         <div style={styles.card}>
           <div style={styles.cardTitle}>
             <ChevronDown size={18} color="#1a73e8" />
@@ -1016,6 +1173,8 @@ export default function App() {
           <p>© 2026 SP26 成果發表會 · AI 評分系統</p>
           <p style={{ marginTop: 4 }}>Powered by React · Firebase · Gemini AI</p>
         </div>
+          </>
+        )}
       </main>
 
       <div style={styles.toast(showToast)}>
@@ -1093,12 +1252,12 @@ export default function App() {
               </button>
             </div>
             <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
-              請先在 Firebase Console 啟用「Email／密碼」或「Google」登入，並在 Firestore 新增集合 <strong>admins</strong>，以該管理員帳號的 <strong>UID</strong> 作為文件 ID 建立一筆文件（內容可為空），再由此登入。
+              目前所有評分者都需要先登入 Google。若要進入管理員 Dashboard，還要另外在 Firestore 的 <strong>admins</strong> 集合中，以該帳號的 <strong>UID</strong> 作為文件 ID 建立一筆文件。
             </p>
             <button
               type="button"
               onClick={handleGoogleAdminLogin}
-              disabled={adminLoginLoading}
+              disabled={adminLoginLoading || googleLoginLoading}
               style={{
                 ...styles.primaryBtn,
                 marginTop: 0,
@@ -1106,11 +1265,11 @@ export default function App() {
                 background: '#fff',
                 color: '#222',
                 border: '1px solid #dadce0',
-                opacity: adminLoginLoading ? 0.7 : 1,
-                cursor: adminLoginLoading ? 'not-allowed' : 'pointer',
+                opacity: adminLoginLoading || googleLoginLoading ? 0.7 : 1,
+                cursor: adminLoginLoading || googleLoginLoading ? 'not-allowed' : 'pointer',
               }}
             >
-              {adminLoginLoading ? '登入中…' : '使用 Google 登入'}
+              {adminLoginLoading || googleLoginLoading ? '登入中…' : userId ? '用目前帳號驗證管理員權限' : '使用 Google 登入'}
             </button>
             <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#888', marginBottom: 12 }}>或使用 Email / 密碼</div>
             <form onSubmit={handleAdminLoginSubmit}>
@@ -1164,7 +1323,7 @@ export default function App() {
                     fontSize: '0.8rem',
                   }}
                   onClick={handleAdminLogout}
-                  title="登出並回到匿名投票"
+                    title="登出目前帳號"
                 >
                   <LogOut size={16} />
                   結束管理
