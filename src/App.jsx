@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
-import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download } from 'lucide-react';
+import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut } from 'lucide-react';
 
 // 請將以下 placeholder 替換為您在 Firebase Console 取得的實際設定值
 // const firebaseConfig = {
@@ -26,10 +26,6 @@ const firebaseConfig = {
 };
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
-
-// 管理員登入帳號密碼（可改成環境變數）
-const ADMIN_USERNAME = process.env.REACT_APP_ADMIN_USER || 'admin';
-const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASS || 'sp26admin';
 
 const app = initializeApp(firebaseConfig);
 // Firebase Analytics 需要 `measurementId`，避免未設定時初始化失敗
@@ -377,20 +373,41 @@ export default function App() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [adminRatings, setAdminRatings] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
 
   useEffect(() => {
-    if (auth.currentUser) {
-      setUserId(auth.currentUser.uid);
-      return;
-    }
-    signInAnonymously(auth)
-      .then((cred) => setUserId(cred.user.uid))
-      .catch((err) => console.error('匿名登入失敗：', err));
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setUserId(null);
+        setIsAdminUser(false);
+        signInAnonymously(auth).catch((err) => console.error('匿名登入失敗：', err));
+        return;
+      }
+      setUserId(user.uid);
+      if (user.isAnonymous) {
+        setIsAdminUser(false);
+      } else {
+        getDoc(doc(db, 'admins', user.uid))
+          .then((snap) => setIsAdminUser(snap.exists))
+          .catch((err) => {
+            console.error('讀取管理員權限失敗：', err);
+            setIsAdminUser(false);
+          });
+      }
+    });
+    return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!isAdminUser && showAdmin) setShowAdmin(false);
+  }, [isAdminUser, showAdmin]);
 
   // 線上人數：簡易即時狀態（onlineUsers 集合）
   useEffect(() => {
@@ -636,20 +653,49 @@ export default function App() {
   }, [showLeaderboard]);
 
   const handleOpenLeaderboard = () => setShowLeaderboard(true);
+
   const handleOpenAdmin = () => {
-    if (!adminLoggedIn) {
-      const username = window.prompt('請輸入管理員帳號：', '');
-      if (username == null) return;
-      const password = window.prompt('請輸入管理員密碼：', '');
-      if (password == null) return;
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        setAdminLoggedIn(true);
-        setShowAdmin(true);
-      } else {
-        alert('帳號或密碼錯誤');
-      }
-    } else {
+    if (isAdminUser) {
       setShowAdmin(true);
+    } else {
+      setShowAdminLogin(true);
+    }
+  };
+
+  const handleAdminLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminPassword) {
+      alert('請輸入 Email 與密碼');
+      return;
+    }
+    setAdminLoginLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
+      const snap = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+      if (!snap.exists) {
+        await signOut(auth);
+        alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
+        setAdminPassword('');
+        return;
+      }
+      setIsAdminUser(true);
+      setAdminPassword('');
+      setShowAdminLogin(false);
+      setShowAdmin(true);
+    } catch (err) {
+      alert('登入失敗，請確認 Email／密碼是否正確');
+      console.error(err);
+    } finally {
+      setAdminLoginLoading(false);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await signOut(auth);
+      setShowAdmin(false);
+    } catch (err) {
+      console.error('登出失敗：', err);
     }
   };
 
@@ -1002,6 +1048,58 @@ export default function App() {
         </div>
       )}
 
+      {showAdminLogin && (
+        <div style={styles.overlay} onClick={() => !adminLoginLoading && setShowAdminLogin(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>
+                <Users size={20} />
+                管理員登入
+              </div>
+              <button
+                type="button"
+                aria-label="關閉"
+                disabled={adminLoginLoading}
+                style={{ background: 'none', border: 'none', cursor: adminLoginLoading ? 'not-allowed' : 'pointer', padding: 4 }}
+                onClick={() => setShowAdminLogin(false)}
+              >
+                <X size={22} color="#666" />
+              </button>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
+              請先在 Firebase Console 啟用「Email／密碼」登入，並在 Firestore 新增集合 <strong>admins</strong>，以該管理員帳號的 <strong>UID</strong> 作為文件 ID 建立一筆文件（內容可為空），再由此登入。
+            </p>
+            <form onSubmit={handleAdminLoginSubmit}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: 6 }}>Email</label>
+              <input
+                type="email"
+                autoComplete="email"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                style={{ ...styles.textarea, minHeight: 44, marginBottom: 12 }}
+                disabled={adminLoginLoading}
+              />
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: 6 }}>密碼</label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                style={{ ...styles.textarea, minHeight: 44, marginBottom: 16 }}
+                disabled={adminLoginLoading}
+              />
+              <button
+                type="submit"
+                style={{ ...styles.primaryBtn, opacity: adminLoginLoading ? 0.7 : 1, cursor: adminLoginLoading ? 'not-allowed' : 'pointer' }}
+                disabled={adminLoginLoading}
+              >
+                {adminLoginLoading ? '登入中…' : '登入'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showAdmin && (
         <div style={styles.overlay} onClick={() => setShowAdmin(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -1010,14 +1108,32 @@ export default function App() {
                 <Table2 size={20} />
                 管理員 Dashboard
               </div>
-              <button
-                type="button"
-                aria-label="關閉"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                onClick={() => setShowAdmin(false)}
-              >
-                <X size={22} color="#666" />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.headerBtn,
+                    background: 'rgba(26,115,232,0.1)',
+                    border: '1px solid rgba(26,115,232,0.35)',
+                    color: '#1a73e8',
+                    padding: '6px 10px',
+                    fontSize: '0.8rem',
+                  }}
+                  onClick={handleAdminLogout}
+                  title="登出並回到匿名投票"
+                >
+                  <LogOut size={16} />
+                  結束管理
+                </button>
+                <button
+                  type="button"
+                  aria-label="關閉"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                  onClick={() => setShowAdmin(false)}
+                >
+                  <X size={22} color="#666" />
+                </button>
+              </div>
             </div>
 
             <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: '#e8f5e9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
