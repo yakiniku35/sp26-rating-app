@@ -412,6 +412,19 @@ export default function App() {
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
 
+  const fetchAdminDoc = useCallback(async (uid) => {
+    const adminRef = doc(db, 'admins', uid);
+    try {
+      return await getDoc(adminRef);
+    } catch (err) {
+      if (err?.code === 'permission-denied' && auth.currentUser) {
+        await auth.currentUser.getIdToken(true);
+        return await getDoc(adminRef);
+      }
+      throw err;
+    }
+  }, []);
+
   const verifyAdminAccess = useCallback(async (user) => {
     if (!user || !user.uid) {
       const err = new Error('NO_AUTH_USER');
@@ -419,7 +432,7 @@ export default function App() {
       throw err;
     }
 
-    const snap = await getDoc(doc(db, 'admins', user.uid));
+    const snap = await fetchAdminDoc(user.uid);
     if (!snap.exists()) {
       alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
       setAdminPassword('');
@@ -432,7 +445,7 @@ export default function App() {
     setShowAdminLogin(false);
     setShowAdmin(true);
     return true;
-  }, []);
+  }, [fetchAdminDoc]);
 
   const signInWithGoogle = useCallback(async ({ adminIntent = false } = {}) => {
     setGoogleLoginLoading(true);
@@ -503,7 +516,7 @@ export default function App() {
         email: user.email || '',
       });
 
-      getDoc(doc(db, 'admins', user.uid))
+      fetchAdminDoc(user.uid)
         .then((snap) => {
           if (!active) return;
           const allowed = snap.exists();
@@ -533,7 +546,7 @@ export default function App() {
       active = false;
       unsub();
     };
-  }, []);
+  }, [fetchAdminDoc]);
 
   useEffect(() => {
     if (!isAdminUser && showAdmin) setShowAdmin(false);
@@ -859,7 +872,7 @@ export default function App() {
     }
 
     try {
-      const snap = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+      const snap = await fetchAdminDoc(auth.currentUser.uid);
       if (snap.exists()) {
         setIsAdminUser(true);
         setShowAdmin(true);
