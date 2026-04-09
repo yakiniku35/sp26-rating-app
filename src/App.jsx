@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
@@ -480,8 +480,14 @@ export default function App() {
     });
   }, []);
 
+  const anyIndividualSubmitting = useMemo(
+    () => Object.values(presentationDrafts).some((d) => d && d.submitting),
+    [presentationDrafts]
+  );
+
   const handleGenerateAIForPresentation = useCallback(
     async (presentation, idx) => {
+      if (bulkSubmitting) return;
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
         alert('請先完成 4 項評分，再產生 AI 評語');
@@ -497,11 +503,12 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, aiLoading: false }));
       }
     },
-    [getDraft, updateDraft]
+    [bulkSubmitting, getDraft, updateDraft]
   );
 
   const handleSubmitForPresentation = useCallback(
     async (presentation, idx) => {
+      if (bulkSubmitting) return;
       const draft = getDraft(idx);
       if (!Object.values(draft.scores).every((v) => v > 0)) {
         alert('請完成所有 4 項評分');
@@ -517,7 +524,6 @@ export default function App() {
           session: presentation.session,
           scores: draft.scores,
           comment: draft.comment,
-      
           timestamp: serverTimestamp(),
           anonymousUserId: userId,
         });
@@ -536,11 +542,15 @@ export default function App() {
         updateDraft(idx, (prev) => ({ ...prev, submitting: false }));
       }
     },
-    [getDraft, selectedRoom, updateDraft, userId]
+    [bulkSubmitting, getDraft, selectedRoom, updateDraft, userId]
   );
 
   const handleSubmitAllPresentations = useCallback(async () => {
     if (!currentRoom) return;
+    if (anyIndividualSubmitting) {
+      alert('請待單筆提交完成後再使用一鍵提交');
+      return;
+    }
 
     const validItems = currentRoom.presentations
       .map((presentation, idx) => ({ presentation, idx, draft: getDraft(idx) }))
@@ -552,37 +562,51 @@ export default function App() {
     }
 
     setBulkSubmitting(true);
+    let successCount = 0;
+    const failedNames = [];
     try {
       for (const item of validItems) {
         const { presentation, idx, draft } = item;
-        await addDoc(collection(db, 'ratings'), {
-          roomId: selectedRoom,
-          presenter: presentation.presenter,
-          topic: presentation.topic,
-          session: presentation.session,
-          scores: draft.scores,
-          comment: draft.comment,
-          timestamp: serverTimestamp(),
-          anonymousUserId: userId,
-        });
-        updateDraft(idx, (prev) => ({
-          ...prev,
-          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
-          comment: '',
-          submitting: false,
-        }));
+        try {
+          await addDoc(collection(db, 'ratings'), {
+            roomId: selectedRoom,
+            presenter: presentation.presenter,
+            topic: presentation.topic,
+            session: presentation.session,
+            scores: draft.scores,
+            comment: draft.comment,
+            timestamp: serverTimestamp(),
+            anonymousUserId: userId,
+          });
+          updateDraft(idx, (prev) => ({
+            ...prev,
+            scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+            comment: '',
+            submitting: false,
+          }));
+          successCount += 1;
+        } catch (err) {
+          console.error('一鍵提交單筆失敗：', presentation.presenter, err);
+          failedNames.push(presentation.presenter);
+        }
       }
 
-      alert(`已成功一鍵提交 ${validItems.length} 筆評分`);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    } catch (err) {
-      console.error('一鍵提交失敗：', err);
-      alert('一鍵提交失敗，請稍後再試');
+      if (successCount > 0) {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      }
+
+      let msg = `一鍵提交完成：成功 ${successCount} 筆`;
+      if (failedNames.length > 0) {
+        msg += `，失敗 ${failedNames.length} 筆`;
+        const preview = failedNames.slice(0, 5).join('、');
+        msg += `\n失敗：${preview}${failedNames.length > 5 ? '…' : ''}`;
+      }
+      alert(msg);
     } finally {
       setBulkSubmitting(false);
     }
-  }, [currentRoom, getDraft, selectedRoom, updateDraft, userId]);
+  }, [anyIndividualSubmitting, currentRoom, getDraft, selectedRoom, updateDraft, userId]);
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -816,11 +840,11 @@ export default function App() {
                 ...styles.primaryBtn,
                 marginTop: 10,
                 marginBottom: 0,
-                opacity: bulkSubmitting ? 0.7 : 1,
-                cursor: bulkSubmitting ? 'not-allowed' : 'pointer',
+                opacity: bulkSubmitting || anyIndividualSubmitting ? 0.7 : 1,
+                cursor: bulkSubmitting || anyIndividualSubmitting ? 'not-allowed' : 'pointer',
               }}
               onClick={handleSubmitAllPresentations}
-              disabled={bulkSubmitting}
+              disabled={bulkSubmitting || anyIndividualSubmitting}
             >
               <Send size={18} />
               {bulkSubmitting ? '一鍵提交中…' : '一鍵全部提交（已填完者）'}
@@ -830,6 +854,7 @@ export default function App() {
 
         {currentRoom && currentRoom.presentations.map((presentation, idx) => {
           const draft = getDraft(idx);
+          const rowLocked = bulkSubmitting || draft.submitting;
           return (
             <div key={`${presentation.presenter}-${idx}`} style={styles.card}>
               <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6, marginBottom: 12 }}>
@@ -852,7 +877,9 @@ export default function App() {
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                       <button
                         key={n}
+                        type="button"
                         style={styles.scoreBtn(draft.scores[item.key] === n)}
+                        disabled={rowLocked}
                         onClick={() =>
                           updateDraft(idx, (prev) => ({
                             ...prev,
@@ -872,9 +899,10 @@ export default function App() {
                 一句話回饋
               </div>
               <textarea
-                style={styles.textarea}
+                style={{ ...styles.textarea, opacity: rowLocked ? 0.75 : 1 }}
                 placeholder="寫下您對這場報告的一句話回饋…"
                 value={draft.comment}
+                readOnly={rowLocked}
                 onChange={(e) =>
                   updateDraft(idx, (prev) => ({ ...prev, comment: e.target.value }))
                 }
@@ -882,18 +910,28 @@ export default function App() {
                 onBlur={(e) => (e.target.style.borderColor = '#e0e7ff')}
               />
               <button
-                style={{ ...styles.aiBtn, opacity: draft.aiLoading ? 0.7 : 1, cursor: draft.aiLoading ? 'not-allowed' : 'pointer' }}
+                type="button"
+                style={{
+                  ...styles.aiBtn,
+                  opacity: draft.aiLoading || rowLocked ? 0.7 : 1,
+                  cursor: draft.aiLoading || rowLocked ? 'not-allowed' : 'pointer',
+                }}
                 onClick={() => handleGenerateAIForPresentation(presentation, idx)}
-                disabled={draft.aiLoading}
+                disabled={draft.aiLoading || rowLocked}
               >
                 <Sparkles size={14} />
                 {draft.aiLoading ? 'AI 生成中…' : '✨ AI 產生評語'}
               </button>
 
               <button
-                style={{ ...styles.primaryBtn, opacity: draft.submitting ? 0.7 : 1, cursor: draft.submitting ? 'not-allowed' : 'pointer' }}
+                type="button"
+                style={{
+                  ...styles.primaryBtn,
+                  opacity: bulkSubmitting || draft.submitting ? 0.7 : 1,
+                  cursor: bulkSubmitting || draft.submitting ? 'not-allowed' : 'pointer',
+                }}
                 onClick={() => handleSubmitForPresentation(presentation, idx)}
-                disabled={draft.submitting}
+                disabled={bulkSubmitting || draft.submitting}
               >
                 <Send size={18} />
                 {draft.submitting ? '提交中…' : `提交 ${presentation.presenter} 評分`}
