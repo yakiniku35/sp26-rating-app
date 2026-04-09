@@ -1515,8 +1515,8 @@ export default function App() {
                     background: 'rgba(26,115,232,0.1)',
                     border: '1px solid rgba(26,115,232,0.35)',
                     color: '#1a73e8',
-                    padding: '6px 10px',
-                    fontSize: '0.8rem',
+                    padding: isMobile ? '5px 8px' : '6px 10px',
+                    fontSize: isMobile ? '0.74rem' : '0.8rem',
                   }}
                   onClick={() => navigateToMainPage()}
                   title="返回一般評分頁"
@@ -1530,8 +1530,8 @@ export default function App() {
                     background: 'rgba(26,115,232,0.1)',
                     border: '1px solid rgba(26,115,232,0.35)',
                     color: '#1a73e8',
-                    padding: '6px 10px',
-                    fontSize: '0.8rem',
+                    padding: isMobile ? '5px 8px' : '6px 10px',
+                    fontSize: isMobile ? '0.74rem' : '0.8rem',
                   }}
                   onClick={handleAdminLogout}
                   title="登出目前帳號"
@@ -1542,22 +1542,22 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: '#e8f5e9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+            <div style={{ marginBottom: 12, padding: isMobile ? '8px 10px' : '10px 12px', borderRadius: 10, background: '#e8f5e9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: isMobile ? '0.82rem' : '0.9rem', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Users size={18} color="#2e7d32" />
                 <span>目前在線人數：</span>
                 <span style={{ fontWeight: 700, fontSize: '1rem' }}>{onlineCount}</span>
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#555' }}>（最近 1 分鐘有心跳的使用者）</div>
+              <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#555' }}>（最近 1 分鐘有心跳的使用者）</div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <BarChart3 size={16} color="#1a73e8" />
                   投票紀錄 Dashboard
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={handleExportCSV}
@@ -1565,13 +1565,13 @@ export default function App() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 10px',
+                      gap: 5,
+                      padding: isMobile ? '5px 8px' : '6px 10px',
                       borderRadius: 8,
                       border: '1px solid #1a73e8',
                       background: csvExporting || clearingRatings || !adminRatings.length ? '#e3f2fd' : '#fff',
                       color: '#1a73e8',
-                      fontSize: '0.8rem',
+                      fontSize: isMobile ? '0.74rem' : '0.8rem',
                       cursor: csvExporting || clearingRatings || !adminRatings.length ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -1585,13 +1585,13 @@ export default function App() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 10px',
+                      gap: 5,
+                      padding: isMobile ? '5px 8px' : '6px 10px',
                       borderRadius: 8,
                       border: '1px solid #d32f2f',
                       background: clearingRatings || csvExporting || !adminRatings.length ? '#ffebee' : '#fff',
                       color: '#c62828',
-                      fontSize: '0.8rem',
+                      fontSize: isMobile ? '0.74rem' : '0.8rem',
                       cursor: clearingRatings || csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
                     }}
                     title="永久刪除所有投票紀錄"
@@ -1601,11 +1601,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: 10, padding: '10px', border: '1px solid #e8eefc', borderRadius: 10, background: '#f8fbff' }}>
-                <div style={{ fontSize: '0.8rem', color: '#1a237e', fontWeight: 700, marginBottom: 8 }}>依帳號查看全部評分</div>
+              <div style={{ marginBottom: 10, padding: isMobile ? '8px' : '10px', border: '1px solid #e8eefc', borderRadius: 10, background: '#f8fbff' }}>
+                <div style={{ fontSize: isMobile ? '0.76rem' : '0.8rem', color: '#1a237e', fontWeight: 700, marginBottom: 8 }}>依帳號查看全部評分</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <select
-                    style={{ ...styles.select, marginBottom: 0, minWidth: 240, maxWidth: 360 }}
+                    style={{ ...styles.select, marginBottom: 0, minWidth: isMobile ? '100%' : 240, maxWidth: isMobile ? '100%' : 360, fontSize: isMobile ? '0.82rem' : '0.9rem', padding: isMobile ? '9px 10px' : '12px 14px' }}
                     value={adminRaterFilter}
                     onChange={(e) => setAdminRaterFilter(e.target.value)}
                   >
@@ -1624,8 +1624,8 @@ export default function App() {
                         background: '#e3f2fd',
                         color: '#1565c0',
                         borderRadius: 8,
-                        padding: '8px 10px',
-                        fontSize: '0.8rem',
+                        padding: isMobile ? '6px 8px' : '8px 10px',
+                        fontSize: isMobile ? '0.74rem' : '0.8rem',
                         cursor: 'pointer',
                       }}
                       onClick={() => setAdminRaterFilter('ALL')}
@@ -1634,7 +1634,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: '0.76rem', color: '#546e7a', marginTop: 8 }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.76rem', color: '#546e7a', marginTop: 8 }}>
                   {adminRaterFilter === 'ALL'
                     ? `目前顯示全部資料，共 ${adminRatings.length} 筆。`
                     : `目前顯示：${selectedRater?.name || selectedRater?.email || selectedRater?.uid || adminRaterFilter}，共 ${filteredAdminRatings.length} 筆。`}
@@ -1642,12 +1642,12 @@ export default function App() {
               </div>
 
               {adminLoading ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>載入中…</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>載入中…</div>
               ) : filteredAdminRatings.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>目前尚無評分資料</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>目前尚無評分資料</div>
               ) : (
-                <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <div style={{ maxHeight: isMobile ? 220 : 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.74rem' : '0.8rem' }}>
                     <thead>
                       <tr style={{ background: '#f5f5f5' }}>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>時間</th>
@@ -1675,30 +1675,30 @@ export default function App() {
                           : '';
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{timeStr}</td>
-                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
                               {r.raterName || r.raterEmail || (r.raterUserId ? `${r.raterUserId.slice(0, 8)}…` : '-')}
                             </td>
-                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
-                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
-                            <td style={{ padding: '6px 6px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.professionalism}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.fluency}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.visual}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'center' }}>{r.scores?.inspiration}</td>
-                            <td style={{ padding: '6px 6px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
-                            <td style={{ padding: '6px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
+                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.professionalism}</td>
+                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.fluency}</td>
+                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.visual}</td>
+                            <td style={{ padding: isMobile ? '5px 3px' : '6px 4px', textAlign: 'center' }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
+                            <td style={{ padding: isMobile ? '5px 4px' : '6px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <button
                                 type="button"
                                 onClick={() => handleAdminScoreAction(r, 'inc')}
-                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                                style={{ border: '1px solid #81c784', background: '#e8f5e9', color: '#2e7d32', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer', marginRight: 4 }}
                               >
                                 +1
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleAdminScoreAction(r, 'dec')}
-                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer', marginRight: 4 }}
+                                style={{ border: '1px solid #ffcc80', background: '#fff3e0', color: '#ef6c00', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer', marginRight: 4 }}
                               >
                                 -1
                               </button>
@@ -1708,7 +1708,7 @@ export default function App() {
                                   if (!window.confirm('確定要把這筆投票四項分數全部重置為 0 嗎？')) return;
                                   handleAdminScoreAction(r, 'reset');
                                 }}
-                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                                style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 6, padding: isMobile ? '1px 4px' : '2px 6px', fontSize: isMobile ? '0.64rem' : '0.7rem', cursor: 'pointer' }}
                               >
                                 重置
                               </button>
@@ -1723,14 +1723,14 @@ export default function App() {
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Table2 size={16} color="#5e35b1" />
                   課程與老師管理
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
+                <span style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
               </div>
-              <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: 10, fontSize: '0.8rem' }}>
+              <div style={{ maxHeight: isMobile ? 180 : 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: isMobile ? 8 : 10, fontSize: isMobile ? '0.74rem' : '0.8rem' }}>
                 {rooms.map((room) => (
                   <div key={room.id} style={{ marginBottom: 10, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
