@@ -1177,8 +1177,20 @@ export default function App() {
       )}
 
       {isAdminPage && isAdminUser && (
-        <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 1080, padding: '22px 22px 60px' }) }}>
-          <div style={{ ...styles.card, marginTop: 8, ...(isMobile ? { borderRadius: 12, padding: 14 } : {}) }}>
+        <main style={{ 
+          width: '100%',
+          minHeight: '100vh',
+          padding: isMobile ? '14px 10px 40px' : '0',
+          background: '#f5f7fa',
+        }}>
+          <div style={{ 
+            ...styles.card, 
+            marginTop: 0,
+            borderRadius: 0,
+            minHeight: '100vh',
+            maxWidth: 'none',
+            padding: isMobile ? '14px' : '20px 30px',
+          }}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
                 <Table2 size={20} />
@@ -1229,22 +1241,27 @@ export default function App() {
             </div>
 
             {/* 統計卡片區 */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12, marginBottom: 14 }}>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#1976d2', color: '#fff' }}>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>總評分數</div>
-                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.totalRatings}</div>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', 
+              gap: isMobile ? 8 : 16, 
+              marginBottom: 20 
+            }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '16px 20px', borderRadius: 12, background: '#1976d2', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', opacity: 0.9, marginBottom: 6 }}>總評分數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2.2rem', fontWeight: 700 }}>{adminStats.totalRatings}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#388e3c', color: '#fff' }}>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>參與人數</div>
-                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.uniqueRaters}</div>
+              <div style={{ padding: isMobile ? '10px 12px' : '16px 20px', borderRadius: 12, background: '#388e3c', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', opacity: 0.9, marginBottom: 6 }}>參與人數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2.2rem', fontWeight: 700 }}>{adminStats.uniqueRaters}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#f57c00', color: '#fff' }}>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>平均分數</div>
-                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.avgScore.toFixed(2)}</div>
+              <div style={{ padding: isMobile ? '10px 12px' : '16px 20px', borderRadius: 12, background: '#f57c00', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', opacity: 0.9, marginBottom: 6 }}>平均分數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2.2rem', fontWeight: 700 }}>{adminStats.avgScore.toFixed(2)}</div>
               </div>
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: '#7b1fa2', color: '#fff' }}>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>顯示筆數</div>
-                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{filteredAndSortedAdminRatings.length}</div>
+              <div style={{ padding: isMobile ? '10px 12px' : '16px 20px', borderRadius: 12, background: '#7b1fa2', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', opacity: 0.9, marginBottom: 6 }}>顯示筆數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2.2rem', fontWeight: 700 }}>{filteredAndSortedAdminRatings.length}</div>
               </div>
             </div>
 
