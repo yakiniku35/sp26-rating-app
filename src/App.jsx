@@ -36,13 +36,17 @@ export default function App() {
   const [adminLoginLoading, setAdminLoginLoading] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [adminRatings, setAdminRatings] = useState([]);
-  const [adminRaterFilter, setAdminRaterFilter] = useState('ALL');
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
   const [clearingRatings, setClearingRatings] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
+  const [adminSearchText, setAdminSearchText] = useState('');
+  const [adminRoomFilter, setAdminRoomFilter] = useState('ALL');
+  const [adminSortBy, setAdminSortBy] = useState('time-desc');
+  const [adminPageSize, setAdminPageSize] = useState(50);
+  const [adminCurrentPage, setAdminCurrentPage] = useState(1);
   const isAdminPage = currentPath === ADMIN_PATH;
   const isMobile = viewportWidth <= 768;
   const t = useCallback((key) => (I18N[language] && I18N[language][key]) || I18N.zh[key] || key, [language]);
@@ -230,12 +234,6 @@ export default function App() {
       setShowAdminLogin(true);
     }
   }, [isAdminPage, isAdminUser, navigateToMainPage]);
-
-  useEffect(() => {
-    if (!isAdminPage) {
-      setAdminRaterFilter('ALL');
-    }
-  }, [isAdminPage]);
 
   useEffect(() => {
     if (!userId) {
@@ -547,34 +545,108 @@ export default function App() {
     return () => unsub();
   }, [isAdminPage, isAdminUser]);
 
-  const adminRaterOptions = useMemo(() => {
-    const map = {};
-    adminRatings.forEach((r) => {
-      const uid = r.raterUserId || 'UNKNOWN_UID';
-      if (!map[uid]) {
-        map[uid] = {
-          uid,
-          name: r.raterName || '',
-          email: r.raterEmail || '',
-          count: 0,
-        };
+  // 管理員資料篩選、搜尋、排序
+  const filteredAndSortedAdminRatings = useMemo(() => {
+    let result = [...adminRatings];
+
+    // 搜尋篩選
+    if (adminSearchText.trim()) {
+      const searchLower = adminSearchText.toLowerCase();
+      result = result.filter((r) => {
+        return (
+          r.presenter?.toLowerCase().includes(searchLower) ||
+          r.topic?.toLowerCase().includes(searchLower) ||
+          r.raterName?.toLowerCase().includes(searchLower) ||
+          r.raterEmail?.toLowerCase().includes(searchLower) ||
+          r.comment?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // 教室篩選
+    if (adminRoomFilter !== 'ALL') {
+      result = result.filter((r) => r.roomId === adminRoomFilter);
+    }
+
+    // 排序
+    result.sort((a, b) => {
+      if (adminSortBy === 'time-desc') {
+        const ta = a.timestamp && typeof a.timestamp.toMillis === 'function' ? a.timestamp.toMillis() : 0;
+        const tb = b.timestamp && typeof b.timestamp.toMillis === 'function' ? b.timestamp.toMillis() : 0;
+        return tb - ta;
+      } else if (adminSortBy === 'time-asc') {
+        const ta = a.timestamp && typeof a.timestamp.toMillis === 'function' ? a.timestamp.toMillis() : 0;
+        const tb = b.timestamp && typeof b.timestamp.toMillis === 'function' ? b.timestamp.toMillis() : 0;
+        return ta - tb;
+      } else if (adminSortBy === 'score-desc') {
+        const avgA = (a.scores.professionalism + a.scores.fluency + a.scores.visual + a.scores.inspiration) / 4;
+        const avgB = (b.scores.professionalism + b.scores.fluency + b.scores.visual + b.scores.inspiration) / 4;
+        return avgB - avgA;
+      } else if (adminSortBy === 'score-asc') {
+        const avgA = (a.scores.professionalism + a.scores.fluency + a.scores.visual + a.scores.inspiration) / 4;
+        const avgB = (b.scores.professionalism + b.scores.fluency + b.scores.visual + b.scores.inspiration) / 4;
+        return avgA - avgB;
+      } else if (adminSortBy === 'presenter') {
+        return (a.presenter || '').localeCompare(b.presenter || '');
       }
-      map[uid].count += 1;
-      if (!map[uid].name && r.raterName) map[uid].name = r.raterName;
-      if (!map[uid].email && r.raterEmail) map[uid].email = r.raterEmail;
+      return 0;
     });
-    return Object.values(map).sort((a, b) => b.count - a.count);
+
+    return result;
+  }, [adminRatings, adminSearchText, adminRoomFilter, adminSortBy]);
+
+  // 統計數據
+  const adminStats = useMemo(() => {
+    const totalRatings = adminRatings.length;
+    const uniqueRaters = new Set(adminRatings.map(r => r.raterUserId)).size;
+    const totalScore = adminRatings.reduce((sum, r) => {
+      return sum + (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+    }, 0);
+    const avgScore = totalRatings > 0 ? totalScore / totalRatings : 0;
+
+    const roomStats = {};
+    adminRatings.forEach(r => {
+      if (!roomStats[r.roomId]) {
+        roomStats[r.roomId] = { count: 0, total: 0 };
+      }
+      roomStats[r.roomId].count += 1;
+      roomStats[r.roomId].total += (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+    });
+
+    const presenterStats = {};
+    adminRatings.forEach(r => {
+      if (!presenterStats[r.presenter]) {
+        presenterStats[r.presenter] = { count: 0, total: 0 };
+      }
+      presenterStats[r.presenter].count += 1;
+      presenterStats[r.presenter].total += (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+    });
+
+    return {
+      totalRatings,
+      uniqueRaters,
+      avgScore,
+      roomStats,
+      presenterStats,
+    };
   }, [adminRatings]);
 
-  const filteredAdminRatings = useMemo(() => {
-    if (adminRaterFilter === 'ALL') return adminRatings;
-    return adminRatings.filter((r) => (r.raterUserId || 'UNKNOWN_UID') === adminRaterFilter);
-  }, [adminRatings, adminRaterFilter]);
+  // 分頁處理
+  const paginatedRatings = useMemo(() => {
+    if (adminPageSize === 0) return filteredAndSortedAdminRatings; // 顯示全部
+    const startIdx = (adminCurrentPage - 1) * adminPageSize;
+    return filteredAndSortedAdminRatings.slice(startIdx, startIdx + adminPageSize);
+  }, [filteredAndSortedAdminRatings, adminCurrentPage, adminPageSize]);
 
-  const selectedRater = useMemo(() => {
-    if (adminRaterFilter === 'ALL') return null;
-    return adminRaterOptions.find((x) => x.uid === adminRaterFilter) || null;
-  }, [adminRaterFilter, adminRaterOptions]);
+  const totalPages = useMemo(() => {
+    if (adminPageSize === 0) return 1;
+    return Math.ceil(filteredAndSortedAdminRatings.length / adminPageSize);
+  }, [filteredAndSortedAdminRatings.length, adminPageSize]);
+
+  // 當篩選條件改變時重置頁碼
+  useEffect(() => {
+    setAdminCurrentPage(1);
+  }, [adminSearchText, adminRoomFilter, adminSortBy, adminPageSize]);
 
   const handleExportCSV = () => {
     if (!adminRatings.length) {
@@ -1156,6 +1228,26 @@ export default function App() {
               <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: '#555' }}>（最近 1 分鐘有心跳的使用者）</div>
             </div>
 
+            {/* 統計卡片區 */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12, marginBottom: 14 }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>總評分數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.totalRatings}</div>
+              </div>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: '#fff' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>參與人數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.uniqueRaters}</div>
+              </div>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: '#fff' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>平均分數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{adminStats.avgScore.toFixed(2)}</div>
+              </div>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: '#fff' }}>
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', opacity: 0.9, marginBottom: 4 }}>顯示筆數</div>
+                <div style={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 700 }}>{filteredAndSortedAdminRatings.length}</div>
+              </div>
+            </div>
+
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ fontWeight: 700, fontSize: isMobile ? '0.88rem' : '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1206,51 +1298,96 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: 10, padding: isMobile ? '8px' : '10px', border: '1px solid #e8eefc', borderRadius: 10, background: '#f8fbff' }}>
-                <div style={{ fontSize: isMobile ? '0.76rem' : '0.8rem', color: '#1a237e', fontWeight: 700, marginBottom: 8 }}>依帳號查看全部評分</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* 搜尋與篩選區 */}
+              <div style={{ marginBottom: 12, padding: isMobile ? '10px' : '12px', border: '1px solid #e0e7ff', borderRadius: 10, background: '#f8fbff' }}>
+                <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#1a237e', fontWeight: 700, marginBottom: 10 }}>🔍 搜尋與篩選</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <input
+                    type="text"
+                    placeholder="搜尋報告者、題目、評分者或評論..."
+                    value={adminSearchText}
+                    onChange={(e) => setAdminSearchText(e.target.value)}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '1 1 300px',
+                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      border: '1px solid #d0d7de',
+                      borderRadius: 8,
+                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      outline: 'none',
+                    }}
+                  />
                   <select
-                    style={{ ...styles.select, marginBottom: 0, minWidth: isMobile ? '100%' : 240, maxWidth: isMobile ? '100%' : 360, fontSize: isMobile ? '0.82rem' : '0.9rem', padding: isMobile ? '9px 10px' : '12px 14px' }}
-                    value={adminRaterFilter}
-                    onChange={(e) => setAdminRaterFilter(e.target.value)}
+                    value={adminRoomFilter}
+                    onChange={(e) => setAdminRoomFilter(e.target.value)}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 180px',
+                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      border: '1px solid #d0d7de',
+                      borderRadius: 8,
+                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
-                    <option value="ALL">全部帳號（{adminRatings.length} 筆）</option>
-                    {adminRaterOptions.map((opt) => (
-                      <option key={opt.uid} value={opt.uid}>
-                        {(opt.name || opt.email || opt.uid)}（{opt.count} 筆）
-                      </option>
+                    <option value="ALL">全部教室</option>
+                    {rooms.map((room) => (
+                      <option key={room.id} value={room.id}>{room.name}</option>
                     ))}
                   </select>
-                  {adminRaterFilter !== 'ALL' && (
+                  <select
+                    value={adminSortBy}
+                    onChange={(e) => setAdminSortBy(e.target.value)}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 150px',
+                      padding: isMobile ? '8px 10px' : '9px 12px',
+                      border: '1px solid #d0d7de',
+                      borderRadius: 8,
+                      fontSize: isMobile ? '0.82rem' : '0.88rem',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="time-desc">時間 ↓ 新到舊</option>
+                    <option value="time-asc">時間 ↑ 舊到新</option>
+                    <option value="score-desc">分數 ↓ 高到低</option>
+                    <option value="score-asc">分數 ↑ 低到高</option>
+                    <option value="presenter">報告者 A-Z</option>
+                  </select>
+                  {(adminSearchText || adminRoomFilter !== 'ALL') && (
                     <button
                       type="button"
-                      style={{
-                        border: '1px solid #90caf9',
-                        background: '#e3f2fd',
-                        color: '#1565c0',
-                        borderRadius: 8,
-                        padding: isMobile ? '6px 8px' : '8px 10px',
-                        fontSize: isMobile ? '0.74rem' : '0.8rem',
-                        cursor: 'pointer',
+                      onClick={() => {
+                        setAdminSearchText('');
+                        setAdminRoomFilter('ALL');
                       }}
-                      onClick={() => setAdminRaterFilter('ALL')}
+                      style={{
+                        padding: isMobile ? '8px 12px' : '9px 14px',
+                        border: '1px solid #ef9a9a',
+                        background: '#ffebee',
+                        color: '#c62828',
+                        borderRadius: 8,
+                        fontSize: isMobile ? '0.78rem' : '0.82rem',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
                     >
                       清除篩選
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: isMobile ? '0.7rem' : '0.76rem', color: '#546e7a', marginTop: 8 }}>
-                  {adminRaterFilter === 'ALL'
-                    ? `目前顯示全部資料，共 ${adminRatings.length} 筆。`
-                    : `目前顯示：${selectedRater?.name || selectedRater?.email || selectedRater?.uid || adminRaterFilter}，共 ${filteredAdminRatings.length} 筆。`}
+                <div style={{ fontSize: isMobile ? '0.7rem' : '0.74rem', color: '#546e7a' }}>
+                  {filteredAndSortedAdminRatings.length === adminRatings.length
+                    ? `顯示全部 ${adminRatings.length} 筆資料`
+                    : `篩選後顯示 ${filteredAndSortedAdminRatings.length} / ${adminRatings.length} 筆`}
                 </div>
               </div>
 
               {adminLoading ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>載入中…</div>
-              ) : filteredAdminRatings.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>目前尚無評分資料</div>
+              ) : filteredAndSortedAdminRatings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: isMobile ? '0.82rem' : '0.9rem' }}>沒有符合條件的評分資料</div>
               ) : (
+                <>
                 <div style={{ maxHeight: isMobile ? 400 : 450, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '0.76rem' : '0.82rem' }}>
                     <thead>
@@ -1264,12 +1401,13 @@ export default function App() {
                         <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>流暢</th>
                         <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>視覺</th>
                         <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>啟發</th>
+                        <th style={{ padding: isMobile ? '10px 4px' : '10px 6px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>平均</th>
                         <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>回饋</th>
                         <th style={{ padding: isMobile ? '10px 6px' : '10px 8px', borderBottom: '1px solid #eee', textAlign: 'center', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1, fontWeight: 600 }}>分數管理</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAdminRatings.map((r) => {
+                      {paginatedRatings.map((r) => {
                         const room = rooms.find((x) => x.id === r.roomId);
                         const ts =
                           r.timestamp && typeof r.timestamp.toDate === 'function'
@@ -1278,6 +1416,7 @@ export default function App() {
                         const timeStr = ts
                           ? `${ts.getHours().toString().padStart(2, '0')}:${ts.getMinutes().toString().padStart(2, '0')}`
                           : '';
+                        const avgScore = ((r.scores?.professionalism || 0) + (r.scores?.fluency || 0) + (r.scores?.visual || 0) + (r.scores?.inspiration || 0)) / 4;
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                             <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', whiteSpace: 'nowrap' }}>{timeStr}</td>
@@ -1291,6 +1430,7 @@ export default function App() {
                             <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.fluency}</td>
                             <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.visual}</td>
                             <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: isMobile ? '8px 4px' : '8px 6px', textAlign: 'center', fontWeight: 700, color: avgScore >= 8 ? '#2e7d32' : avgScore >= 6 ? '#1976d2' : '#ef6c00' }}>{avgScore.toFixed(1)}</td>
                             <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
                             <td style={{ padding: isMobile ? '8px 6px' : '8px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <button
@@ -1324,6 +1464,69 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* 分頁控制 */}
+                {filteredAndSortedAdminRatings.length > 0 && (
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: isMobile ? '8px' : '10px', background: '#f8f9fa', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '0.78rem' : '0.85rem' }}>
+                      <span>每頁顯示：</span>
+                      <select
+                        value={adminPageSize}
+                        onChange={(e) => setAdminPageSize(Number(e.target.value))}
+                        style={{
+                          padding: '4px 8px',
+                          border: '1px solid #d0d7de',
+                          borderRadius: 6,
+                          fontSize: isMobile ? '0.78rem' : '0.82rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value={20}>20 筆</option>
+                        <option value={50}>50 筆</option>
+                        <option value={100}>100 筆</option>
+                        <option value={0}>全部</option>
+                      </select>
+                    </div>
+                    {adminPageSize > 0 && totalPages > 1 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setAdminCurrentPage(Math.max(1, adminCurrentPage - 1))}
+                          disabled={adminCurrentPage === 1}
+                          style={{
+                            padding: '4px 10px',
+                            border: '1px solid #d0d7de',
+                            background: adminCurrentPage === 1 ? '#f0f0f0' : '#fff',
+                            borderRadius: 6,
+                            fontSize: isMobile ? '0.76rem' : '0.8rem',
+                            cursor: adminCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          ← 上一頁
+                        </button>
+                        <span style={{ fontSize: isMobile ? '0.78rem' : '0.85rem', padding: '0 8px' }}>
+                          {adminCurrentPage} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAdminCurrentPage(Math.min(totalPages, adminCurrentPage + 1))}
+                          disabled={adminCurrentPage === totalPages}
+                          style={{
+                            padding: '4px 10px',
+                            border: '1px solid #d0d7de',
+                            background: adminCurrentPage === totalPages ? '#f0f0f0' : '#fff',
+                            borderRadius: 6,
+                            fontSize: isMobile ? '0.76rem' : '0.8rem',
+                            cursor: adminCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          下一頁 →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                </>
               )}
             </div>
 
