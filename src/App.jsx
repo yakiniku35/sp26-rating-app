@@ -30,7 +30,7 @@ const EVENT_SCHEDULE_URL = process.env.REACT_APP_EVENT_SCHEDULE_URL || '';
 
 const I18N = {
   zh: {
-    appTitle: '2026成果發表會',
+    appTitle: '2026 成果發表會',
     subAdmin: '管理員模式',
     subUser: '即時評分系統（匿名評分）',
     leaderboard: '排行榜',
@@ -47,7 +47,7 @@ const I18N = {
     ratingPage: '評分頁面',
     reselect: '重新選擇學生',
     scoreTitle: '評分項目（1–10 分）',
-    feedbackTitle: '一句話回饋',
+    feedbackTitle: '給學生一句鼓勵的話',
     quickFeedback: '快速產生建議回饋',
     generating: '建議產生中…',
     adminDashboard: '管理員 Dashboard',
@@ -55,7 +55,7 @@ const I18N = {
     endAdmin: '結束管理',
   },
   en: {
-    appTitle: 'SP26 Presentation Day',
+    appTitle: '2026 Presentation Day',
     subAdmin: 'Admin Mode',
     subUser: 'Live Rating System (Anonymous)',
     leaderboard: 'Leaderboard',
@@ -72,7 +72,7 @@ const I18N = {
     ratingPage: 'Rating Page',
     reselect: 'Choose Another Presenter',
     scoreTitle: 'Scoring (1-10)',
-    feedbackTitle: 'One-line Feedback',
+    feedbackTitle: 'Share Your Feedback',
     quickFeedback: 'Generate Suggested Feedback',
     generating: 'Generating...',
     adminDashboard: 'Admin Dashboard',
