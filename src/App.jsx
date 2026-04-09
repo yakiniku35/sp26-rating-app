@@ -842,10 +842,25 @@ export default function App() {
 
   const handleOpenLeaderboard = () => setShowLeaderboard(true);
 
-  const handleOpenAdmin = () => {
-    if (isAdminUser) {
-      setShowAdmin(true);
-    } else {
+  const handleOpenAdmin = async () => {
+    if (!userId || !auth.currentUser) {
+      setShowAdminLogin(true);
+      return;
+    }
+
+    try {
+      const snap = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+      if (snap.exists()) {
+        setIsAdminUser(true);
+        setShowAdmin(true);
+        setShowAdminLogin(false);
+      } else {
+        setIsAdminUser(false);
+        setShowAdminLogin(true);
+      }
+    } catch (err) {
+      console.error('驗證管理員權限失敗：', err);
+      alert('無法驗證管理員權限，請確認 Firestore 規則已部署，且 admins 文件 ID 與目前登入 UID 完全一致。');
       setShowAdminLogin(true);
     }
   };
@@ -879,6 +894,9 @@ export default function App() {
         return;
       }
       await verifyAdminAccess(auth.currentUser);
+    } catch (err) {
+      console.error('管理員登入流程失敗：', err);
+      alert('管理員登入流程失敗，請稍後再試。');
     } finally {
       setAdminLoginLoading(false);
     }
