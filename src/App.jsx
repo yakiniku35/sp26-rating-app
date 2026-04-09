@@ -248,14 +248,14 @@ const styles = {
     gap: 4,
     flexWrap: 'wrap',
   },
-  scoreBtn: (active) => ({
-    width: 32,
-    height: 32,
+  scoreBtn: (active, compact = false) => ({
+    width: compact ? 30 : 32,
+    height: compact ? 30 : 32,
     borderRadius: 6,
     border: active ? '2px solid #1a73e8' : '2px solid #e0e7ff',
     background: active ? 'linear-gradient(135deg, #1a73e8, #0d47a1)' : '#f5f8ff',
     color: active ? '#fff' : '#666',
-    fontSize: '0.85rem',
+    fontSize: compact ? '0.8rem' : '0.85rem',
     fontWeight: active ? 700 : 400,
     cursor: 'pointer',
     transition: 'all 0.15s',
@@ -390,6 +390,7 @@ const styles = {
 };
 
 export default function App() {
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth || 1024);
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
   const [userId, setUserId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -416,6 +417,13 @@ export default function App() {
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
   const isAdminPage = currentPath === ADMIN_PATH;
+  const isMobile = viewportWidth <= 768;
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth || 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const navigateToMainPage = useCallback((replace = false) => {
     const target = '/';
@@ -1125,25 +1133,25 @@ export default function App() {
 
   return (
     <div style={styles.app}>
-      <header style={styles.header}>
+      <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
         <div>
-          <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
-          <div style={styles.headerSub}>
+          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>🎓 SP26 成果發表會</div>
+          <div style={{ ...styles.headerSub, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
             {isAdminUser ? `管理員模式 · ${userProfile?.displayName || ''}` : '即時評分系統（匿名評分）'}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
           {isAdminUser && (
-            <button style={styles.headerBtn} onClick={handleAdminLogout}>
+            <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleAdminLogout}>
               <LogOut size={16} />
               登出
             </button>
           )}
-          <button style={styles.headerBtn} onClick={handleOpenLeaderboard}>
+          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenLeaderboard}>
             <BarChart3 size={16} />
             排行榜
           </button>
-          <button style={styles.headerBtn} onClick={handleOpenAdmin}>
+          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '7px 9px', fontSize: '0.78rem' } : {}) }} onClick={handleOpenAdmin}>
             <Users size={16} />
             管理員
           </button>
@@ -1151,9 +1159,9 @@ export default function App() {
       </header>
 
       {!isAdminPage && (
-      <main style={styles.main}>
+      <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : {}) }}>
         {!authReady ? (
-          <div style={styles.card}>
+          <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
             <div style={styles.cardTitle}>
               <Users size={18} color="#1a73e8" />
               讀取登入狀態中
@@ -1162,7 +1170,7 @@ export default function App() {
           </div>
         ) : (
           <>
-        <div style={styles.card}>
+        <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
           <div style={styles.cardTitle}>
             <CalendarDays size={18} color="#1a73e8" />
             本次發表會議程
@@ -1190,14 +1198,14 @@ export default function App() {
           )}
         </div>
 
-        <div style={styles.card}>
+        <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
           <div style={styles.cardTitle}>
             <ChevronDown size={18} color="#1a73e8" />
             選擇教室與報告
           </div>
 
           <select
-            style={styles.select}
+            style={{ ...styles.select, ...(isMobile ? { fontSize: '0.9rem', padding: '11px 12px' } : {}) }}
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
@@ -1224,7 +1232,7 @@ export default function App() {
 
           {currentRoom && (
             <select
-              style={{ ...styles.select, marginTop: 10, marginBottom: 0 }}
+              style={{ ...styles.select, marginTop: 10, marginBottom: 0, ...(isMobile ? { fontSize: '0.88rem', padding: '11px 12px' } : {}) }}
               value={selectedPresentationIdx}
               onChange={(e) => setSelectedPresentationIdx(e.target.value)}
             >
@@ -1247,7 +1255,7 @@ export default function App() {
           const alreadySubmitted = !isAdminUser && submittedPresentationKeys[presentationKey];
           const rowLocked = draft.submitting || alreadySubmitted;
           return (
-            <div id="rating-page" key={`${presentation.presenter}-${idx}`} style={styles.card}>
+            <div id="rating-page" key={`${presentation.presenter}-${idx}`} style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <div style={{ fontSize: '0.82rem', color: '#1a73e8', fontWeight: 600 }}>評分頁面</div>
                 <button
@@ -1280,14 +1288,14 @@ export default function App() {
                 評分項目（1–10 分）
               </div>
               {SCORE_ITEMS.map((item) => (
-                <div key={`${idx}-${item.key}`} style={styles.scoreRow}>
-                  <div style={styles.scoreLabel}>{item.emoji} {item.label}</div>
-                  <div style={styles.scoreButtons}>
+                <div key={`${idx}-${item.key}`} style={{ ...styles.scoreRow, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: 8, marginBottom: 12 } : {}) }}>
+                  <div style={{ ...styles.scoreLabel, ...(isMobile ? { width: 'auto', fontSize: '0.85rem' } : {}) }}>{item.emoji} {item.label}</div>
+                  <div style={{ ...styles.scoreButtons, ...(isMobile ? { gap: 3 } : {}) }}>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                       <button
                         key={n}
                         type="button"
-                        style={styles.scoreBtn(draft.scores[item.key] === n)}
+                        style={styles.scoreBtn(draft.scores[item.key] === n, isMobile)}
                         disabled={rowLocked}
                         onClick={() =>
                           updateDraft(idx, (prev) => ({
@@ -1308,7 +1316,7 @@ export default function App() {
                 一句話回饋
               </div>
               <textarea
-                style={{ ...styles.textarea, opacity: rowLocked ? 0.75 : 1 }}
+                style={{ ...styles.textarea, opacity: rowLocked ? 0.75 : 1, ...(isMobile ? { minHeight: 72, fontSize: '0.9rem' } : {}) }}
                 placeholder="寫下您對這場報告的一句話回饋…"
                 value={draft.comment}
                 readOnly={rowLocked}
@@ -1327,6 +1335,7 @@ export default function App() {
                 type="button"
                 style={{
                   ...styles.aiBtn,
+                  ...(isMobile ? { width: '100%', justifyContent: 'center' } : {}),
                   opacity: draft.aiLoading || rowLocked ? 0.7 : 1,
                   cursor: draft.aiLoading || rowLocked ? 'not-allowed' : 'pointer',
                 }}
@@ -1341,6 +1350,7 @@ export default function App() {
                 type="button"
                 style={{
                   ...styles.primaryBtn,
+                  ...(isMobile ? { padding: '12px', fontSize: '0.95rem' } : {}),
                   opacity: rowLocked ? 0.7 : 1,
                   cursor: rowLocked ? 'not-allowed' : 'pointer',
                 }}
@@ -1490,8 +1500,8 @@ export default function App() {
       )}
 
       {isAdminPage && isAdminUser && (
-        <main style={styles.main}>
-          <div style={{ ...styles.card, marginTop: 8 }}>
+        <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : {}) }}>
+          <div style={{ ...styles.card, marginTop: 8, ...(isMobile ? { borderRadius: 12, padding: 14 } : {}) }}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
                 <Table2 size={20} />
