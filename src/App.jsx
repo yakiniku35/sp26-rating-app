@@ -409,6 +409,12 @@ export default function App() {
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
 
   const verifyAdminAccess = useCallback(async (user) => {
+    if (!user || !user.uid) {
+      const err = new Error('NO_AUTH_USER');
+      err.code = 'app/no-auth-user';
+      throw err;
+    }
+
     const snap = await getDoc(doc(db, 'admins', user.uid));
     if (!snap.exists()) {
       alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
@@ -889,14 +895,23 @@ export default function App() {
   const handleGoogleAdminLogin = async () => {
     setAdminLoginLoading(true);
     try {
-      if (!userId) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
         await signInWithGoogle({ adminIntent: true });
         return;
       }
-      await verifyAdminAccess(auth.currentUser);
+      await verifyAdminAccess(currentUser);
     } catch (err) {
       console.error('管理員登入流程失敗：', err);
-      alert('管理員登入流程失敗，請稍後再試。');
+      if (err?.code === 'app/no-auth-user') {
+        alert('尚未取得登入狀態，請先用 Google 登入後再試一次。');
+      } else if (err?.code === 'permission-denied') {
+        alert('無法讀取 admins 權限：請確認已部署最新 Firestore 規則，且目前 Firebase 專案正確。');
+      } else if (err?.code === 'unavailable') {
+        alert('Firestore 暫時無法連線，請稍後再試。');
+      } else {
+        alert(`管理員登入流程失敗：${err?.code || 'unknown-error'}`);
+      }
     } finally {
       setAdminLoginLoading(false);
     }
