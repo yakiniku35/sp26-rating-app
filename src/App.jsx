@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut } from 'lucide-react';
@@ -408,6 +408,7 @@ export default function App() {
   const [adminRatings, setAdminRatings] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
+  const [clearingRatings, setClearingRatings] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
@@ -1051,6 +1052,52 @@ export default function App() {
     }
   };
 
+  const handleClearAllRatings = async () => {
+    if (!isAdminUser) {
+      alert('只有管理員可以清空評分資料');
+      return;
+    }
+    if (!adminRatings.length) {
+      alert('目前沒有可清空的評分資料');
+      return;
+    }
+
+    const secondConfirm = window.prompt('此操作會永久刪除所有 ratings。請輸入 DELETE 確認：', '');
+    if (secondConfirm !== 'DELETE') {
+      return;
+    }
+
+    setClearingRatings(true);
+    try {
+      // Firestore batch limit is 500 operations per commit, so delete in chunks.
+      const allSnapshot = await getDocs(collection(db, 'ratings'));
+      if (allSnapshot.empty) {
+        alert('目前沒有可清空的評分資料');
+        return;
+      }
+
+      const docs = allSnapshot.docs;
+      const chunkSize = 450;
+      for (let i = 0; i < docs.length; i += chunkSize) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + chunkSize);
+        chunk.forEach((docSnap) => batch.delete(docSnap.ref));
+        await batch.commit();
+      }
+
+      alert(`已清空 ratings，共刪除 ${docs.length} 筆資料。`);
+    } catch (err) {
+      console.error('清空 ratings 失敗：', err);
+      if (err?.code === 'permission-denied') {
+        alert('清空失敗：目前帳號沒有刪除權限，請確認為管理員且 Firestore 規則已發布。');
+      } else {
+        alert('清空 ratings 失敗，請稍後再試。');
+      }
+    } finally {
+      setClearingRatings(false);
+    }
+  };
+
   const handleAdminScoreAction = async (rating, action) => {
     try {
       const currentScores = rating.scores || {};
@@ -1482,26 +1529,48 @@ export default function App() {
                   <BarChart3 size={16} color="#1a73e8" />
                   投票紀錄 Dashboard
                 </div>
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  disabled={csvExporting || !adminRatings.length}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    border: '1px solid #1a73e8',
-                    background: csvExporting || !adminRatings.length ? '#e3f2fd' : '#fff',
-                    color: '#1a73e8',
-                    fontSize: '0.8rem',
-                    cursor: csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <Download size={14} />
-                  {csvExporting ? '匯出中…' : '匯出 CSV'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    disabled={csvExporting || clearingRatings || !adminRatings.length}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #1a73e8',
+                      background: csvExporting || clearingRatings || !adminRatings.length ? '#e3f2fd' : '#fff',
+                      color: '#1a73e8',
+                      fontSize: '0.8rem',
+                      cursor: csvExporting || clearingRatings || !adminRatings.length ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <Download size={14} />
+                    {csvExporting ? '匯出中…' : '匯出 CSV'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAllRatings}
+                    disabled={clearingRatings || csvExporting || !adminRatings.length}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #d32f2f',
+                      background: clearingRatings || csvExporting || !adminRatings.length ? '#ffebee' : '#fff',
+                      color: '#c62828',
+                      fontSize: '0.8rem',
+                      cursor: clearingRatings || csvExporting || !adminRatings.length ? 'not-allowed' : 'pointer',
+                    }}
+                    title="永久刪除所有投票紀錄"
+                  >
+                    {clearingRatings ? '清空中…' : '一鍵清空 ratings'}
+                  </button>
+                </div>
               </div>
 
               {adminLoading ? (
