@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 import { Star, Send, BarChart3, Sparkles, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays } from 'lucide-react';
 
@@ -537,15 +537,19 @@ export default function App() {
         setUserProfile(null);
         setIsAdminUser(false);
         window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
-        setAuthReady(true);
+        setAuthReady(false);
         setGoogleLoginLoading(false);
+        signInAnonymously(auth).catch((err) => {
+          console.error('匿名登入失敗：', err);
+          if (active) setAuthReady(true);
+        });
         return;
       }
 
       setUserId(user.uid);
       setUserProfile({
         uid: user.uid,
-        displayName: user.displayName || '',
+        displayName: user.displayName || (user.isAnonymous ? '匿名評分者' : ''),
         email: user.email || '',
       });
 
@@ -958,7 +962,7 @@ export default function App() {
     setAdminLoginLoading(true);
     try {
       const currentUser = auth.currentUser;
-      if (!currentUser) {
+      if (!currentUser || currentUser.isAnonymous) {
         await signInWithGoogle({ adminIntent: true });
         return;
       }
@@ -1215,16 +1219,11 @@ export default function App() {
         <div>
           <div style={styles.headerTitle}>🎓 SP26 成果發表會</div>
           <div style={styles.headerSub}>
-            {userProfile?.displayName ? `Hi, ${userProfile.displayName}` : 'AI 智慧評分系統'}
+            {isAdminUser ? `管理員模式 · ${userProfile?.displayName || ''}` : 'AI 智慧評分系統（匿名評分）'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {!userId ? (
-            <button style={styles.headerBtn} onClick={signInWithGoogle} disabled={googleLoginLoading || !authReady}>
-              <Users size={16} />
-              {googleLoginLoading ? '登入中…' : 'Google 登入'}
-            </button>
-          ) : (
+          {isAdminUser && (
             <button style={styles.headerBtn} onClick={handleAdminLogout}>
               <LogOut size={16} />
               登出
@@ -1250,35 +1249,6 @@ export default function App() {
               讀取登入狀態中
             </div>
             <div style={{ fontSize: '0.9rem', color: '#666' }}>請稍候，系統正在確認您的登入狀態。</div>
-          </div>
-        ) : !userId ? (
-          <div style={styles.card}>
-            <div style={styles.cardTitle}>
-              <Users size={18} color="#1a73e8" />
-              請先登入再開始評分
-            </div>
-            <div style={{ fontSize: '0.9rem', color: '#555', lineHeight: 1.7, marginBottom: 14 }}>
-              為了避免重複投票並記錄評分者資訊，所有同學都需要先使用 Google 帳號登入後才能送出評分。
-            </div>
-            <button
-              type="button"
-              style={{
-                ...styles.primaryBtn,
-                marginTop: 0,
-                background: '#fff',
-                color: '#222',
-                border: '1px solid #dadce0',
-                opacity: googleLoginLoading ? 0.7 : 1,
-                cursor: googleLoginLoading ? 'not-allowed' : 'pointer',
-              }}
-              onClick={signInWithGoogle}
-              disabled={googleLoginLoading}
-            >
-              {googleLoginLoading ? '登入中…' : '使用 Google 登入後開始評分'}
-            </button>
-            <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 10 }}>
-              如果你是用 Vercel 網址開啟，請確認該網域已加入 Firebase Authorized domains。
-            </div>
           </div>
         ) : (
           <>
@@ -1538,7 +1508,7 @@ export default function App() {
               </button>
             </div>
             <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
-              目前所有評分者都需要先登入 Google。若要進入管理員 Dashboard，還要另外在 Firestore 的 <strong>admins</strong> 集合中，以該帳號的 <strong>UID</strong> 作為文件 ID 建立一筆文件。
+              一般評分者使用匿名模式即可。若要進入管理員 Dashboard，請使用 Google 帳號登入，並在 Firestore 的 <strong>admins</strong> 集合中，以該帳號的 <strong>UID</strong> 作為文件 ID 建立一筆文件。
             </p>
             <button
               type="button"
