@@ -39,6 +39,7 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 const GOOGLE_AUTH_ERROR_MESSAGE = 'Google 登入失敗，請確認 Firebase Authentication 已啟用 Google 登入，且已把目前網域加入 Authorized domains。';
 const ADMIN_LOGIN_INTENT_KEY = 'sp26-admin-login-intent';
+const ADMIN_PATH = '/admin';
 
 function buildAuthDebugText(uid) {
   return `目前 projectId: ${firebaseConfig.projectId || '未設定'}\n目前 uid: ${uid || '未登入'}`;
@@ -389,6 +390,7 @@ const styles = {
 };
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
   const [userId, setUserId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [rooms, setRooms] = useState(ROOMS);
@@ -400,19 +402,48 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginLoading, setAdminLoginLoading] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [adminRatings, setAdminRatings] = useState([]);
+  const [adminRaterFilter, setAdminRaterFilter] = useState('ALL');
   const [adminLoading, setAdminLoading] = useState(false);
   const [csvExporting, setCsvExporting] = useState(false);
   const [clearingRatings, setClearingRatings] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [googleLoginLoading, setGoogleLoginLoading] = useState(false);
   const [submittedPresentationKeys, setSubmittedPresentationKeys] = useState({});
+  const isAdminPage = currentPath === ADMIN_PATH;
+
+  const navigateToMainPage = useCallback((replace = false) => {
+    const target = '/';
+    if (replace) {
+      window.history.replaceState({}, '', target);
+    } else if (window.location.pathname !== target) {
+      window.history.pushState({}, '', target);
+    }
+    setCurrentPath(target);
+  }, []);
+
+  const navigateToAdminPage = useCallback((replace = false) => {
+    if (!isAdminUser) return;
+    if (replace) {
+      window.history.replaceState({}, '', ADMIN_PATH);
+    } else if (window.location.pathname !== ADMIN_PATH) {
+      window.history.pushState({}, '', ADMIN_PATH);
+    }
+    setCurrentPath(ADMIN_PATH);
+  }, [isAdminUser]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setCurrentPath(window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const fetchAdminDoc = useCallback(async (uid) => {
     const adminRef = doc(db, 'admins', uid);
@@ -445,9 +476,9 @@ export default function App() {
     setIsAdminUser(true);
     setAdminPassword('');
     setShowAdminLogin(false);
-    setShowAdmin(true);
+    navigateToAdminPage();
     return true;
-  }, [fetchAdminDoc]);
+  }, [fetchAdminDoc, navigateToAdminPage]);
 
   const signInWithGoogle = useCallback(async ({ adminIntent = false } = {}) => {
     setGoogleLoginLoading(true);
@@ -527,9 +558,12 @@ export default function App() {
             window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
             if (allowed) {
               setShowAdminLogin(false);
-              setShowAdmin(true);
+              navigateToAdminPage(true);
             } else {
               alert('此帳號尚未在 Firestore 的 admins 集合中授權為管理員');
+              if (window.location.pathname === ADMIN_PATH) {
+                navigateToMainPage(true);
+              }
             }
           }
         })
@@ -548,11 +582,20 @@ export default function App() {
       active = false;
       unsub();
     };
-  }, [fetchAdminDoc]);
+  }, [fetchAdminDoc, navigateToAdminPage, navigateToMainPage]);
 
   useEffect(() => {
-    if (!isAdminUser && showAdmin) setShowAdmin(false);
-  }, [isAdminUser, showAdmin]);
+    if (!isAdminUser && isAdminPage) {
+      navigateToMainPage(true);
+      setShowAdminLogin(true);
+    }
+  }, [isAdminPage, isAdminUser, navigateToMainPage]);
+
+  useEffect(() => {
+    if (!isAdminPage) {
+      setAdminRaterFilter('ALL');
+    }
+  }, [isAdminPage]);
 
   useEffect(() => {
     if (!userId) {
@@ -613,7 +656,7 @@ export default function App() {
 
   // 只有在開啟管理員頁時才訂閱線上人數
   useEffect(() => {
-    if (!showAdmin) return;
+    if (!isAdminPage || !isAdminUser) return;
 
     const unsub = onSnapshot(collection(db, 'onlineUsers'), (snapshot) => {
       const now = Date.now();
@@ -637,7 +680,7 @@ export default function App() {
     });
 
     return () => unsub();
-  }, [showAdmin]);
+  }, [isAdminPage, isAdminUser]);
 
   const currentRoom = rooms.find((r) => r.id === selectedRoom);
 
@@ -877,7 +920,7 @@ export default function App() {
       const snap = await fetchAdminDoc(auth.currentUser.uid);
       if (snap.exists()) {
         setIsAdminUser(true);
-        setShowAdmin(true);
+        navigateToAdminPage();
         setShowAdminLogin(false);
       } else {
         setIsAdminUser(false);
@@ -939,7 +982,7 @@ export default function App() {
   const handleAdminLogout = async () => {
     try {
       await signOut(auth);
-      setShowAdmin(false);
+      navigateToMainPage(true);
     } catch (err) {
       console.error('登出失敗：', err);
     }
@@ -947,7 +990,7 @@ export default function App() {
 
   // 管理員：Dashboard - 監聽所有評分紀錄
   useEffect(() => {
-    if (!showAdmin) return;
+    if (!isAdminPage || !isAdminUser) return;
     setAdminLoading(true);
 
     const unsub = onSnapshot(
@@ -974,7 +1017,36 @@ export default function App() {
     );
 
     return () => unsub();
-  }, [showAdmin]);
+  }, [isAdminPage, isAdminUser]);
+
+  const adminRaterOptions = useMemo(() => {
+    const map = {};
+    adminRatings.forEach((r) => {
+      const uid = r.raterUserId || 'UNKNOWN_UID';
+      if (!map[uid]) {
+        map[uid] = {
+          uid,
+          name: r.raterName || '',
+          email: r.raterEmail || '',
+          count: 0,
+        };
+      }
+      map[uid].count += 1;
+      if (!map[uid].name && r.raterName) map[uid].name = r.raterName;
+      if (!map[uid].email && r.raterEmail) map[uid].email = r.raterEmail;
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [adminRatings]);
+
+  const filteredAdminRatings = useMemo(() => {
+    if (adminRaterFilter === 'ALL') return adminRatings;
+    return adminRatings.filter((r) => (r.raterUserId || 'UNKNOWN_UID') === adminRaterFilter);
+  }, [adminRatings, adminRaterFilter]);
+
+  const selectedRater = useMemo(() => {
+    if (adminRaterFilter === 'ALL') return null;
+    return adminRaterOptions.find((x) => x.uid === adminRaterFilter) || null;
+  }, [adminRaterFilter, adminRaterOptions]);
 
   const handleExportCSV = () => {
     if (!adminRatings.length) {
@@ -1169,6 +1241,7 @@ export default function App() {
         </div>
       </header>
 
+      {!isAdminPage && (
       <main style={styles.main}>
         {!authReady ? (
           <div style={styles.card}>
@@ -1388,6 +1461,7 @@ export default function App() {
           </>
         )}
       </main>
+      )}
 
       <div style={styles.toast(showToast)}>
         <CheckCircle size={18} />
@@ -1515,9 +1589,9 @@ export default function App() {
         </div>
       )}
 
-      {showAdmin && (
-        <div style={styles.overlay} onClick={() => setShowAdmin(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+      {isAdminPage && isAdminUser && (
+        <main style={styles.main}>
+          <div style={{ ...styles.card, marginTop: 8 }}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
                 <Table2 size={20} />
@@ -1534,19 +1608,26 @@ export default function App() {
                     padding: '6px 10px',
                     fontSize: '0.8rem',
                   }}
-                  onClick={handleAdminLogout}
-                    title="登出目前帳號"
+                  onClick={() => navigateToMainPage()}
+                  title="返回一般評分頁"
                 >
-                  <LogOut size={16} />
-                  結束管理
+                  返回評分頁
                 </button>
                 <button
                   type="button"
-                  aria-label="關閉"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                  onClick={() => setShowAdmin(false)}
+                  style={{
+                    ...styles.headerBtn,
+                    background: 'rgba(26,115,232,0.1)',
+                    border: '1px solid rgba(26,115,232,0.35)',
+                    color: '#1a73e8',
+                    padding: '6px 10px',
+                    fontSize: '0.8rem',
+                  }}
+                  onClick={handleAdminLogout}
+                  title="登出目前帳號"
                 >
-                  <X size={22} color="#666" />
+                  <LogOut size={16} />
+                  結束管理
                 </button>
               </div>
             </div>
@@ -1610,9 +1691,49 @@ export default function App() {
                 </div>
               </div>
 
+              <div style={{ marginBottom: 10, padding: '10px', border: '1px solid #e8eefc', borderRadius: 10, background: '#f8fbff' }}>
+                <div style={{ fontSize: '0.8rem', color: '#1a237e', fontWeight: 700, marginBottom: 8 }}>依帳號查看全部評分</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <select
+                    style={{ ...styles.select, marginBottom: 0, minWidth: 240, maxWidth: 360 }}
+                    value={adminRaterFilter}
+                    onChange={(e) => setAdminRaterFilter(e.target.value)}
+                  >
+                    <option value="ALL">全部帳號（{adminRatings.length} 筆）</option>
+                    {adminRaterOptions.map((opt) => (
+                      <option key={opt.uid} value={opt.uid}>
+                        {(opt.name || opt.email || opt.uid)}（{opt.count} 筆）
+                      </option>
+                    ))}
+                  </select>
+                  {adminRaterFilter !== 'ALL' && (
+                    <button
+                      type="button"
+                      style={{
+                        border: '1px solid #90caf9',
+                        background: '#e3f2fd',
+                        color: '#1565c0',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setAdminRaterFilter('ALL')}
+                    >
+                      清除篩選
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#546e7a', marginTop: 8 }}>
+                  {adminRaterFilter === 'ALL'
+                    ? `目前顯示全部資料，共 ${adminRatings.length} 筆。`
+                    : `目前顯示：${selectedRater?.name || selectedRater?.email || selectedRater?.uid || adminRaterFilter}，共 ${filteredAdminRatings.length} 筆。`}
+                </div>
+              </div>
+
               {adminLoading ? (
                 <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>載入中…</div>
-              ) : adminRatings.length === 0 ? (
+              ) : filteredAdminRatings.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '24px', color: '#888', fontSize: '0.9rem' }}>目前尚無評分資料</div>
               ) : (
                 <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
@@ -1620,6 +1741,7 @@ export default function App() {
                     <thead>
                       <tr style={{ background: '#f5f5f5' }}>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>時間</th>
+                        <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>評分帳號</th>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>教室</th>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>報告者</th>
                         <th style={{ padding: '8px 6px', borderBottom: '1px solid #eee', textAlign: 'left', position: 'sticky', top: 0, background: '#f5f5f5', zIndex: 1 }}>題目</th>
@@ -1632,7 +1754,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {adminRatings.map((r) => {
+                      {filteredAdminRatings.map((r) => {
                         const room = rooms.find((x) => x.id === r.roomId);
                         const ts =
                           r.timestamp && typeof r.timestamp.toDate === 'function'
@@ -1644,6 +1766,9 @@ export default function App() {
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                             <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                            <td style={{ padding: '6px 6px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.raterEmail || r.raterUserId || ''}>
+                              {r.raterName || r.raterEmail || (r.raterUserId ? `${r.raterUserId.slice(0, 8)}…` : '-')}
+                            </td>
                             <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
                             <td style={{ padding: '6px 6px', whiteSpace: 'nowrap' }}>{r.presenter}</td>
                             <td style={{ padding: '6px 6px', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
@@ -1816,7 +1941,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
+        </main>
       )}
     </div>
   );
