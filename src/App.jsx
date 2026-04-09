@@ -39,6 +39,10 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 const GOOGLE_AUTH_ERROR_MESSAGE = 'Google 登入失敗，請確認 Firebase Authentication 已啟用 Google 登入，且已把目前網域加入 Authorized domains。';
 const ADMIN_LOGIN_INTENT_KEY = 'sp26-admin-login-intent';
 
+function buildAuthDebugText(uid) {
+  return `目前 projectId: ${firebaseConfig.projectId || '未設定'}\n目前 uid: ${uid || '未登入'}`;
+}
+
 function prefersRedirectLogin() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent);
 }
@@ -866,7 +870,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('驗證管理員權限失敗：', err);
-      alert('無法驗證管理員權限，請確認 Firestore 規則已部署，且 admins 文件 ID 與目前登入 UID 完全一致。');
+      alert(`無法驗證管理員權限，請確認 Firestore 規則已部署，且 admins 文件 ID 與目前登入 UID 完全一致。\n\n${buildAuthDebugText(auth.currentUser?.uid)}`);
       setShowAdminLogin(true);
     }
   };
@@ -906,7 +910,7 @@ export default function App() {
       if (err?.code === 'app/no-auth-user') {
         alert('尚未取得登入狀態，請先用 Google 登入後再試一次。');
       } else if (err?.code === 'permission-denied') {
-        alert('無法讀取 admins 權限：請確認已部署最新 Firestore 規則，且目前 Firebase 專案正確。');
+        alert(`無法讀取 admins 權限：請確認已部署最新 Firestore 規則，且目前 Firebase 專案正確。\n\n${buildAuthDebugText(auth.currentUser?.uid)}`);
       } else if (err?.code === 'unavailable') {
         alert('Firestore 暫時無法連線，請稍後再試。');
       } else {
