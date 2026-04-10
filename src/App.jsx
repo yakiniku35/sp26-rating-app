@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
 import { db, auth, googleProvider } from './config/firebase';
@@ -1755,6 +1756,7 @@ export default function App() {
           </div>
         </main>
       )}
+      <Analytics />
     </div>
   );
 }
