@@ -923,6 +923,41 @@ export default function App() {
     );
   }, [rooms]);
 
+  const initializeRooms = useCallback(async () => {
+    if (!window.confirm('確定要初始化所有會議廳到 Firestore 嗎？')) {
+      return;
+    }
+    try {
+      for (let i = 0; i < INITIAL_ROOMS.length; i++) {
+        const room = INITIAL_ROOMS[i];
+        await setDoc(
+          doc(db, 'rooms', room.id),
+          {
+            id: room.id,
+            name: room.name,
+            theme: room.theme,
+            presentations: Array.isArray(room.presentations)
+              ? room.presentations.map((p) => ({
+                  ...p,
+                  session: p.session || '',
+                  time: p.time || '',
+                  presenter: p.presenter || '',
+                  topic: p.topic || '',
+                  '實習': p['實習'] || p.internshipTopic || '',
+                }))
+              : [],
+            order: i,
+          },
+          { merge: true }
+        );
+      }
+      alert('會議廳初始化成功！');
+    } catch (err) {
+      console.error('初始化會議廳失敗：', err);
+      alert('初始化失敗，請檢查 Firestore 權限設定或稍後再試。');
+    }
+  }, []);
+
   return (
     <div style={styles.app}>
       <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
@@ -1697,7 +1732,16 @@ export default function App() {
                   <Table2 size={18} color="#5e35b1" />
                   課程與老師管理
                 </div>
-                <span style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#777' }}>（此區操作會同步寫入 Firestore rooms，前台會即時更新）</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#777' }}>（此區操作會同步寫入 Firestore rooms，前台會即時更新）</span>
+                  <button
+                    type="button"
+                    style={{ border: '1px solid #ff6b6b', background: '#fff', color: '#ff6b6b', borderRadius: 8, padding: isMobile ? '8px 10px' : '6px 12px', fontSize: isMobile ? '0.78rem' : '0.8rem', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                    onClick={initializeRooms}
+                  >
+                    🔄 初始化會議廳
+                  </button>
+                </div>
               </div>
               <div style={{ maxHeight: isMobile ? 500 : 600, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: isMobile ? 12 : 16, fontSize: isMobile ? '0.82rem' : '0.88rem' }}>
                 {rooms.map((room) => (
