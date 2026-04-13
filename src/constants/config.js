@@ -6,6 +6,8 @@ export const ADMIN_LOGIN_INTENT_KEY = 'sp26-admin-login-intent';
 
 export const ADMIN_PATH = '/admin';
 
+export const ADMIN_EMAIL_ALLOWLIST = ['admin@sp26.app'];
+
 export const SCORE_ITEMS = [
   { key: 'structure', label: '邏輯架構性' },
   { key: 'fluency', label: '表達流暢度' },

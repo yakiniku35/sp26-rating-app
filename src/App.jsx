@@ -6,7 +6,7 @@ import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
 import { db, auth, googleProvider } from './config/firebase';
-import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
+import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, ADMIN_EMAIL_ALLOWLIST, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
 
@@ -99,11 +99,24 @@ export default function App() {
     }
   }, []);
 
+  const isAllowlistedAdminEmail = useCallback((user) => {
+    const normalizedEmail = (user?.email || '').trim().toLowerCase();
+    return !!normalizedEmail && ADMIN_EMAIL_ALLOWLIST.some((email) => email.trim().toLowerCase() === normalizedEmail);
+  }, []);
+
   const verifyAdminAccess = useCallback(async (user) => {
     if (!user || !user.uid) {
       const err = new Error('NO_AUTH_USER');
       err.code = 'app/no-auth-user';
       throw err;
+    }
+
+    if (isAllowlistedAdminEmail(user)) {
+      setIsAdminUser(true);
+      setAdminPassword('');
+      setShowAdminLogin(false);
+      navigateToAdminPage();
+      return true;
     }
 
     const snap = await fetchAdminDoc(user.uid);
@@ -119,7 +132,7 @@ export default function App() {
     setShowAdminLogin(false);
     navigateToAdminPage();
     return true;
-  }, [fetchAdminDoc, navigateToAdminPage]);
+  }, [fetchAdminDoc, isAllowlistedAdminEmail, navigateToAdminPage]);
 
   const signInWithGoogle = useCallback(async ({ adminIntent = false } = {}) => {
     setGoogleLoginLoading(true);
@@ -194,6 +207,18 @@ export default function App() {
         email: user.email || '',
       });
 
+      if (isAllowlistedAdminEmail(user)) {
+        setIsAdminUser(true);
+        if (window.sessionStorage.getItem(ADMIN_LOGIN_INTENT_KEY) === '1') {
+          window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
+          setShowAdminLogin(false);
+          navigateToAdminPage(true);
+        }
+        setAuthReady(true);
+        setGoogleLoginLoading(false);
+        return;
+      }
+
       fetchAdminDoc(user.uid)
         .then((snap) => {
           if (!active) return;
@@ -227,7 +252,7 @@ export default function App() {
       active = false;
       unsub();
     };
-  }, [fetchAdminDoc, navigateToAdminPage, navigateToMainPage]);
+  }, [fetchAdminDoc, isAllowlistedAdminEmail, navigateToAdminPage, navigateToMainPage]);
 
   useEffect(() => {
     if (!isAdminUser && isAdminPage) {
@@ -444,6 +469,13 @@ export default function App() {
     }
 
     try {
+      if (isAllowlistedAdminEmail(auth.currentUser)) {
+        setIsAdminUser(true);
+        navigateToAdminPage();
+        setShowAdminLogin(false);
+        return;
+      }
+
       const snap = await fetchAdminDoc(auth.currentUser.uid);
       if (snap.exists()) {
         setIsAdminUser(true);
