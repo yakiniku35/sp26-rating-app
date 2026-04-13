@@ -60,7 +60,7 @@ export const ROOMS = [
       { session: 'S4', time: '14:45-15:00', presenter: '詹彬禮 Brooklyn', topic: 'AI 強化的自主移動機器人：基於視覺的決策系統', '實習': '' },
       { session: 'S4', time: '15:00-15:15', presenter: '楊怡珠 Emma', topic: '共享開發文件在軟體發展中的重要性', '實習': '崧旭資訊' },
       { session: 'S4', time: '15:15-15:30', presenter: '郭恩美 Amy', topic: '人工智能在招募流程中的應用', '實習': '金融研訓院' },
-      {session:  'S4', time: '15:30-15:45', presenter: '彭毅 Brandon', topic: '產業銜接', '實習': '台北市電腦公會' },
+      { session: 'S4', time: '15:30-15:45', presenter: '彭毅 Brandon', topic: '產業銜接', '實習': '台北市電腦公會' },
     ],
   },
 ];
