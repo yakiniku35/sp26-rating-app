@@ -9,7 +9,6 @@ import { db, auth, googleProvider } from './config/firebase';
 import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
-import { ROOMS as BACKUP_ROOMS } from './constants/room_backup';
 
 // Utils
 import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedirectLogin } from './utils/helpers';
@@ -40,26 +39,22 @@ const calculateAverageScore = (rawScores = {}) => {
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
-    const backupRoom = BACKUP_ROOMS.find((item) => item.id === room.id);
     return {
       id: room.id,
       name: room.name || room.id,
       theme: room.theme || '',
       presentations: Array.isArray(room.presentations)
         ? room.presentations.map((presentation) => {
-          const backupPresentation = backupRoom?.presentations.find((item) => (
-            item.session === presentation.session
-            && item.time === presentation.time
-            && item.presenter === presentation.presenter
-          ));
-          const internshipTopic = presentation['實習'] || presentation.internshipTopic || '';
+          const internshipUnit = presentation['實習'] || '';
+          const internshipTopic = internshipUnit || presentation.internshipTopic || '';
 
           return {
             session: presentation.session || '',
             time: presentation.time || '',
             presenter: presentation.presenter || '',
+            '實習': internshipUnit,
             internshipTopic: internshipTopic || presentation.topic || '',
-            topic: presentation.topic || backupPresentation?.topic || internshipTopic || presentation.internshipTopic || '',
+            topic: presentation.topic || internshipTopic || presentation.internshipTopic || '',
           };
         })
         : [],
@@ -1050,7 +1045,7 @@ export default function App() {
               {currentRoom.presentations.map((presentation, idx) => (
                 <option key={`${presentation.presenter}-${idx}`} value={String(idx)}>
                   [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter}
-                  {presentation.internshipTopic ? ` - ${presentation.internshipTopic}` : ''}
+                  {presentation['實習'] ? ` - ${presentation['實習']}` : ''}
                 </option>
               ))}
             </select>
