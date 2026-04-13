@@ -962,7 +962,9 @@ export default function App() {
     <div style={styles.app}>
       <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
         <div>
-          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>🎓 {t('appTitle')}</div>
+          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>
+            {!isMobile && '🎓 '}{t('appTitle')}
+          </div>
           <div style={{ ...styles.headerSub, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
             {isAdminUser ? `${t('subAdmin')} · ${userProfile?.displayName || ''}` : t('subUser')}
           </div>
