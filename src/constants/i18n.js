@@ -17,7 +17,7 @@ export const I18N = {
     ratingPage: '評分頁面',
     reselect: '重新選擇學生',
     scoreTitle: '評分項目（1–10 分）',
-    feedbackTitle: '鼓勵式建議',
+    feedbackTitle: '鼓勵或建議',
     adminDashboard: '管理員 Dashboard',
     backToVote: '返回評分頁',
     endAdmin: '結束管理',

@@ -1081,7 +1081,7 @@ export default function App() {
               <option value="">{t('choosePresenter')}</option>
               {currentRoom.presentations.map((presentation, idx) => (
                 <option key={`${presentation.presenter}-${idx}`} value={String(idx)}>
-                  [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter}
+                  [{presentation.time || ''}] {presentation.presenter}
                   {presentation['實習'] ? ` - ${presentation['實習']}` : ''}
                 </option>
               ))}

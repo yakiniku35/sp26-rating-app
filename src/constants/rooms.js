@@ -49,7 +49,7 @@ export const ROOMS = [
       { session: 'S1', time: '10:05-10:20', presenter: '彭毅 Brandon', topic: '網絡安全：無聲的守護者', '實習': '' },
       { session: 'S1', time: '10:20-10:35', presenter: '楊怡珠 Emma', topic: '非英語母語者學習編程的挑戰', '實習': '' },
       { session: 'S1', time: '10:35-10:50', presenter: '福媛芳 Emily', topic: '知己知彼：孫子兵法在網絡防禦中的運用', '實習': '' },
-      { session: 'S1', time: '10:50-11:05', presenter: '徐芯怡 Katherine', topic: '醫療影像(X射線)與物質相互作用的屏蔽機制', '實習': '陽交大' },
+      { session: 'S1', time: '10:50-11:05', presenter: '徐芯怡 Katherine', topic: '醫療影像(X射線)與物質相互作用的屏蔽機制', '實習': '陽明交大' },
       { session: 'S2', time: '11:15-11:30', presenter: '何安娜 Anashelly', topic: '衰老對疫苗免疫反應的影響', '實習': '' },
       { session: 'S2', time: '11:30-11:45', presenter: '冉爍蕊 Carolyn', topic: '臺灣的垃圾管理制度', '實習': '' },
       { session: 'S2', time: '11:45-12:00', presenter: '金達 Tegan', topic: '人工智能對於會計產業的影響', '實習': '' },
