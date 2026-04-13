@@ -17,18 +17,15 @@ import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedi
 // Styles
 import { styles } from './styles/appStyles';
 
-export default function App() {
-  const [language, setLanguage] = useState('zh');
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth || 1024);
-  const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
-  const [userId, setUserId] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [rooms, setRooms] = useState(() => {
-    return INITIAL_ROOMS.map((room) => {
-      const backupRoom = BACKUP_ROOMS.find((item) => item.id === room.id);
-      return {
-        ...room,
-        presentations: room.presentations.map((presentation) => {
+const mergeRoomsWithBackup = (sourceRooms = []) => {
+  return sourceRooms.map((room) => {
+    const backupRoom = BACKUP_ROOMS.find((item) => item.id === room.id);
+    return {
+      id: room.id,
+      name: room.name || room.id,
+      theme: room.theme || '',
+      presentations: Array.isArray(room.presentations)
+        ? room.presentations.map((presentation) => {
           const backupPresentation = backupRoom?.presentations.find((item) => (
             item.session === presentation.session
             && item.time === presentation.time
@@ -36,14 +33,25 @@ export default function App() {
           ));
 
           return {
-            ...presentation,
-            internshipTopic: presentation.topic || '',
-            topic: backupPresentation?.topic || presentation.topic || '',
+            session: presentation.session || '',
+            time: presentation.time || '',
+            presenter: presentation.presenter || '',
+            internshipTopic: presentation.internshipTopic || presentation.topic || '',
+            topic: presentation.topic || backupPresentation?.topic || presentation.internshipTopic || '',
           };
-        }),
-      };
-    });
+        })
+        : [],
+    };
   });
+};
+
+export default function App() {
+  const [language, setLanguage] = useState('zh');
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth || 1024);
+  const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
+  const [userId, setUserId] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [rooms, setRooms] = useState(() => mergeRoomsWithBackup(INITIAL_ROOMS));
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
@@ -77,6 +85,36 @@ export default function App() {
     const onResize = () => setViewportWidth(window.innerWidth || 1024);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'rooms'), (snapshot) => {
+      if (snapshot.empty) {
+        return;
+      }
+
+      const remoteRooms = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data() || {};
+          return {
+            id: data.id || docSnap.id,
+            name: data.name || '',
+            theme: data.theme || '',
+            presentations: Array.isArray(data.presentations) ? data.presentations : [],
+            order: typeof data.order === 'number' ? data.order : Number.MAX_SAFE_INTEGER,
+          };
+        })
+        .sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.id.localeCompare(b.id);
+        });
+
+      setRooms(mergeRoomsWithBackup(remoteRooms));
+    }, (err) => {
+      console.error('讀取 rooms 設定失敗，改用本地預設：', err);
+    });
+
+    return () => unsub();
   }, []);
 
   const navigateToMainPage = useCallback((replace = false) => {

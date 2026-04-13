@@ -28,6 +28,11 @@ service cloud.firestore {
       allow create, update, delete: if isSignedIn() && request.auth.uid == userId;
     }
 
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 管理員白名單：以文件 ID = Firebase Auth 使用者的 uid（內容可為空物件）
     match /admins/{adminId} {
       allow read: if isSignedIn() && request.auth.uid == adminId;
