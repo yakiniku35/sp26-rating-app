@@ -6,10 +6,7 @@ service cloud.firestore {
     }
     function isAdmin() {
       return isSignedIn()
-        && (
-          request.auth.token.email == 'admin@sp26.app'
-          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        );
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     match /ratings/{ratingId} {

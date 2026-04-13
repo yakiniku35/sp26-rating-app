@@ -6,7 +6,7 @@ import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
 import { db, auth, googleProvider } from './config/firebase';
-import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, ADMIN_EMAIL_ALLOWLIST, SCORE_ITEMS } from './constants/config';
+import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
 import { ROOMS as BACKUP_ROOMS } from './constants/room_backup';
@@ -16,6 +16,27 @@ import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedi
 
 // Styles
 import { styles } from './styles/appStyles';
+
+const SCORE_KEYS = SCORE_ITEMS.map((item) => item.key);
+const EMPTY_SCORES = SCORE_KEYS.reduce((acc, key) => {
+  acc[key] = 0;
+  return acc;
+}, {});
+
+const normalizeScores = (rawScores = {}) => {
+  const normalized = { ...EMPTY_SCORES };
+  normalized.structure = rawScores?.structure ?? rawScores?.inspiration ?? 0;
+  normalized.fluency = rawScores?.fluency ?? 0;
+  normalized.professionalism = rawScores?.professionalism ?? 0;
+  normalized.visualDesign = rawScores?.visualDesign ?? rawScores?.visual ?? 0;
+  return normalized;
+};
+
+const calculateAverageScore = (rawScores = {}) => {
+  const scores = normalizeScores(rawScores);
+  const total = SCORE_KEYS.reduce((sum, key) => sum + (scores[key] || 0), 0);
+  return SCORE_KEYS.length ? total / SCORE_KEYS.length : 0;
+};
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
@@ -31,13 +52,14 @@ const mergeRoomsWithBackup = (sourceRooms = []) => {
             && item.time === presentation.time
             && item.presenter === presentation.presenter
           ));
+          const internshipTopic = presentation['實習'] || presentation.internshipTopic || '';
 
           return {
             session: presentation.session || '',
             time: presentation.time || '',
             presenter: presentation.presenter || '',
-            internshipTopic: presentation.internshipTopic || presentation.topic || '',
-            topic: presentation.topic || backupPresentation?.topic || presentation.internshipTopic || '',
+            internshipTopic: internshipTopic || presentation.topic || '',
+            topic: presentation.topic || backupPresentation?.topic || internshipTopic || presentation.internshipTopic || '',
           };
         })
         : [],
@@ -158,24 +180,11 @@ export default function App() {
     }
   }, []);
 
-  const isAllowlistedAdminEmail = useCallback((user) => {
-    const normalizedEmail = (user?.email || '').trim().toLowerCase();
-    return !!normalizedEmail && ADMIN_EMAIL_ALLOWLIST.some((email) => email.trim().toLowerCase() === normalizedEmail);
-  }, []);
-
   const verifyAdminAccess = useCallback(async (user) => {
     if (!user || !user.uid) {
       const err = new Error('NO_AUTH_USER');
       err.code = 'app/no-auth-user';
       throw err;
-    }
-
-    if (isAllowlistedAdminEmail(user)) {
-      setIsAdminUser(true);
-      setAdminPassword('');
-      setShowAdminLogin(false);
-      navigateToAdminPage();
-      return true;
     }
 
     const snap = await fetchAdminDoc(user.uid);
@@ -191,7 +200,7 @@ export default function App() {
     setShowAdminLogin(false);
     navigateToAdminPage();
     return true;
-  }, [fetchAdminDoc, isAllowlistedAdminEmail, navigateToAdminPage]);
+  }, [fetchAdminDoc, navigateToAdminPage]);
 
   const signInWithGoogle = useCallback(async ({ adminIntent = false } = {}) => {
     setGoogleLoginLoading(true);
@@ -266,18 +275,6 @@ export default function App() {
         email: user.email || '',
       });
 
-      if (isAllowlistedAdminEmail(user)) {
-        setIsAdminUser(true);
-        if (window.sessionStorage.getItem(ADMIN_LOGIN_INTENT_KEY) === '1') {
-          window.sessionStorage.removeItem(ADMIN_LOGIN_INTENT_KEY);
-          setShowAdminLogin(false);
-          navigateToAdminPage(true);
-        }
-        setAuthReady(true);
-        setGoogleLoginLoading(false);
-        return;
-      }
-
       fetchAdminDoc(user.uid)
         .then((snap) => {
           if (!active) return;
@@ -311,7 +308,7 @@ export default function App() {
       active = false;
       unsub();
     };
-  }, [fetchAdminDoc, isAllowlistedAdminEmail, navigateToAdminPage, navigateToMainPage]);
+  }, [fetchAdminDoc, navigateToAdminPage, navigateToMainPage]);
 
   useEffect(() => {
     if (!isAdminUser && isAdminPage) {
@@ -414,7 +411,7 @@ export default function App() {
   const getDraft = useCallback(
     (idx) =>
       presentationDrafts[idx] || {
-        scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+        scores: { ...EMPTY_SCORES },
         comment: '',
         submitting: false,
       },
@@ -425,7 +422,7 @@ export default function App() {
     setPresentationDrafts((prev) => {
       const current =
         prev[idx] || {
-          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+          scores: { ...EMPTY_SCORES },
           comment: '',
           submitting: false,
         };
@@ -447,7 +444,7 @@ export default function App() {
       }
 
       const draft = getDraft(idx);
-      if (!Object.values(draft.scores).every((v) => v > 0)) {
+      if (!SCORE_KEYS.every((key) => Number(draft.scores?.[key]) > 0)) {
         alert('請完成所有 4 項評分');
         return;
       }
@@ -458,9 +455,9 @@ export default function App() {
           presentationKey,
           roomId: selectedRoom,
           presenter: presentation.presenter,
-          topic: presentation.topic,
+          topic: presentation.topic || presentation.internshipTopic || presentation['實習'] || '',
           session: presentation.session,
-          scores: draft.scores,
+          scores: normalizeScores(draft.scores),
           comment: draft.comment,
           timestamp: serverTimestamp(),
           raterUserId: userId,
@@ -477,7 +474,7 @@ export default function App() {
 
         updateDraft(idx, (prev) => ({
           ...prev,
-          scores: { professionalism: 0, fluency: 0, visual: 0, inspiration: 0 },
+          scores: { ...EMPTY_SCORES },
           comment: '',
           submitting: false,
         }));
@@ -503,7 +500,7 @@ export default function App() {
         if (!map[key]) {
           map[key] = { roomId: d.roomId, presenter: d.presenter, topic: d.topic, total: 0, count: 0 };
         }
-        const avg = (d.scores.professionalism + d.scores.fluency + d.scores.visual + d.scores.inspiration) / 4;
+        const avg = calculateAverageScore(d.scores);
         map[key].total += avg;
         map[key].count += 1;
       });
@@ -528,13 +525,6 @@ export default function App() {
     }
 
     try {
-      if (isAllowlistedAdminEmail(auth.currentUser)) {
-        setIsAdminUser(true);
-        navigateToAdminPage();
-        setShowAdminLogin(false);
-        return;
-      }
-
       const snap = await fetchAdminDoc(auth.currentUser.uid);
       if (snap.exists()) {
         setIsAdminUser(true);
@@ -671,12 +661,12 @@ export default function App() {
         const tb = b.timestamp && typeof b.timestamp.toMillis === 'function' ? b.timestamp.toMillis() : 0;
         return ta - tb;
       } else if (adminSortBy === 'score-desc') {
-        const avgA = (a.scores.professionalism + a.scores.fluency + a.scores.visual + a.scores.inspiration) / 4;
-        const avgB = (b.scores.professionalism + b.scores.fluency + b.scores.visual + b.scores.inspiration) / 4;
+        const avgA = calculateAverageScore(a.scores);
+        const avgB = calculateAverageScore(b.scores);
         return avgB - avgA;
       } else if (adminSortBy === 'score-asc') {
-        const avgA = (a.scores.professionalism + a.scores.fluency + a.scores.visual + a.scores.inspiration) / 4;
-        const avgB = (b.scores.professionalism + b.scores.fluency + b.scores.visual + b.scores.inspiration) / 4;
+        const avgA = calculateAverageScore(a.scores);
+        const avgB = calculateAverageScore(b.scores);
         return avgA - avgB;
       } else if (adminSortBy === 'presenter') {
         return (a.presenter || '').localeCompare(b.presenter || '');
@@ -692,7 +682,7 @@ export default function App() {
     const totalRatings = adminRatings.length;
     const uniqueRaters = new Set(adminRatings.map(r => r.raterUserId)).size;
     const totalScore = adminRatings.reduce((sum, r) => {
-      return sum + (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+      return sum + calculateAverageScore(r.scores);
     }, 0);
     const avgScore = totalRatings > 0 ? totalScore / totalRatings : 0;
 
@@ -702,7 +692,7 @@ export default function App() {
         roomStats[r.roomId] = { count: 0, total: 0 };
       }
       roomStats[r.roomId].count += 1;
-      roomStats[r.roomId].total += (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+      roomStats[r.roomId].total += calculateAverageScore(r.scores);
     });
 
     const presenterStats = {};
@@ -711,7 +701,7 @@ export default function App() {
         presenterStats[r.presenter] = { count: 0, total: 0 };
       }
       presenterStats[r.presenter].count += 1;
-      presenterStats[r.presenter].total += (r.scores.professionalism + r.scores.fluency + r.scores.visual + r.scores.inspiration) / 4;
+      presenterStats[r.presenter].total += calculateAverageScore(r.scores);
     });
 
     return {
@@ -754,10 +744,7 @@ export default function App() {
         'presenter',
         'topic',
         'session',
-        'professionalism',
-        'fluency',
-        'visual',
-        'inspiration',
+        ...SCORE_KEYS,
         'comment',
         'timestamp',
         'raterUserId',
@@ -772,6 +759,7 @@ export default function App() {
           r.timestamp && typeof r.timestamp.toDate === 'function'
             ? r.timestamp.toDate().toISOString()
             : '';
+        const normalizedScores = normalizeScores(r.scores);
         const values = [
           r.roomId || '',
           room?.name || '',
@@ -779,10 +767,7 @@ export default function App() {
           r.presenter || '',
           r.topic || '',
           r.session || '',
-          r.scores?.professionalism ?? '',
-          r.scores?.fluency ?? '',
-          r.scores?.visual ?? '',
-          r.scores?.inspiration ?? '',
+          ...SCORE_KEYS.map((key) => normalizedScores[key] ?? ''),
           r.comment || '',
           ts,
           r.raterUserId || '',
@@ -887,25 +872,17 @@ export default function App() {
 
   const handleAdminScoreAction = async (rating, action) => {
     try {
-      const currentScores = rating.scores || {};
-      const nextScores = {
-        professionalism: currentScores.professionalism ?? 0,
-        fluency: currentScores.fluency ?? 0,
-        visual: currentScores.visual ?? 0,
-        inspiration: currentScores.inspiration ?? 0,
-      };
+      const nextScores = normalizeScores(rating.scores);
 
       if (action === 'reset') {
-        nextScores.professionalism = 0;
-        nextScores.fluency = 0;
-        nextScores.visual = 0;
-        nextScores.inspiration = 0;
+        SCORE_KEYS.forEach((key) => {
+          nextScores[key] = 0;
+        });
       } else {
         const delta = action === 'inc' ? 1 : -1;
-        nextScores.professionalism = Math.max(0, Math.min(10, nextScores.professionalism + delta));
-        nextScores.fluency = Math.max(0, Math.min(10, nextScores.fluency + delta));
-        nextScores.visual = Math.max(0, Math.min(10, nextScores.visual + delta));
-        nextScores.inspiration = Math.max(0, Math.min(10, nextScores.inspiration + delta));
+        SCORE_KEYS.forEach((key) => {
+          nextScores[key] = Math.max(0, Math.min(10, (nextScores[key] || 0) + delta));
+        });
       }
 
       await updateDoc(doc(db, 'ratings', rating.id), { scores: nextScores });
@@ -922,6 +899,34 @@ export default function App() {
     }
     window.open(EVENT_SCHEDULE_URL, '_blank', 'noopener,noreferrer');
   }, []);
+
+  const persistRoomChanges = useCallback(async (roomId, updater) => {
+    const targetRoom = rooms.find((r) => r.id === roomId);
+    if (!targetRoom) return;
+
+    const nextRoom = updater(targetRoom);
+    if (!nextRoom) return;
+
+    await setDoc(
+      doc(db, 'rooms', roomId),
+      {
+        id: roomId,
+        name: nextRoom.name || roomId,
+        theme: nextRoom.theme || '',
+        presentations: Array.isArray(nextRoom.presentations)
+          ? nextRoom.presentations.map((p) => ({
+              ...p,
+              session: p.session || '',
+              time: p.time || '',
+              presenter: p.presenter || '',
+              topic: p.topic || '',
+              '實習': p['實習'] || p.internshipTopic || '',
+            }))
+          : [],
+      },
+      { merge: true }
+    );
+  }, [rooms]);
 
   return (
     <div style={styles.app}>
@@ -1086,7 +1091,7 @@ export default function App() {
                   {presentation.presenter}
                 </span>
                 <br />
-                {presentation.topic}
+                {presentation.topic || presentation.internshipTopic || presentation['實習'] || '未提供題目'}
               </div>
 
               <div style={styles.cardTitle}>
@@ -1540,10 +1545,10 @@ export default function App() {
                           <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>教室</th>
                           <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>報告者</th>
                           <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, minWidth: '200px' }}>題目</th>
-                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>專業</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>架構</th>
                           <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>流暢</th>
+                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>專業</th>
                           <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>視覺</th>
-                          <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>啟發</th>
                           <th style={{ padding: isMobile ? '12px 6px' : '14px 10px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>平均</th>
                           <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'left', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, minWidth: '180px' }}>回饋</th>
                           <th style={{ padding: isMobile ? '12px 8px' : '14px 12px', borderBottom: '2px solid #dee2e6', textAlign: 'center', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 1, fontWeight: 600, whiteSpace: 'nowrap' }}>操作</th>
@@ -1559,7 +1564,8 @@ export default function App() {
                         const timeStr = ts
                           ? `${ts.getHours().toString().padStart(2, '0')}:${ts.getMinutes().toString().padStart(2, '0')}`
                           : '';
-                        const avgScore = ((r.scores?.professionalism || 0) + (r.scores?.fluency || 0) + (r.scores?.visual || 0) + (r.scores?.inspiration || 0)) / 4;
+                        const displayScores = normalizeScores(r.scores);
+                        const avgScore = calculateAverageScore(r.scores);
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f0f0f0', ':hover': { background: '#f8f9fa' } }}>
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap' }}>{timeStr}</td>
@@ -1569,10 +1575,10 @@ export default function App() {
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap' }}>{room?.name || r.roomId}</td>
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', whiteSpace: 'nowrap', fontWeight: 500 }}>{r.presenter}</td>
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.topic}</td>
-                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.professionalism}</td>
-                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.fluency}</td>
-                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.visual}</td>
-                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{r.scores?.inspiration}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{displayScores.structure}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{displayScores.fluency}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{displayScores.professionalism}</td>
+                            <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 500 }}>{displayScores.visualDesign}</td>
                             <td style={{ padding: isMobile ? '10px 6px' : '12px 10px', textAlign: 'center', fontWeight: 700, color: avgScore >= 8 ? '#2e7d32' : avgScore >= 6 ? '#1976d2' : '#ef6c00' }}>{avgScore.toFixed(1)}</td>
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</td>
                             <td style={{ padding: isMobile ? '10px 8px' : '12px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
@@ -1696,7 +1702,7 @@ export default function App() {
                   <Table2 size={18} color="#5e35b1" />
                   課程與老師管理
                 </div>
-                <span style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#777' }}>（此設定只在目前頁面有效，重新整理會回到預設）</span>
+                <span style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#777' }}>（此區操作會同步寫入 Firestore rooms，前台會即時更新）</span>
               </div>
               <div style={{ maxHeight: isMobile ? 500 : 600, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, padding: isMobile ? 12 : 16, fontSize: isMobile ? '0.82rem' : '0.88rem' }}>
                 {rooms.map((room) => (
@@ -1712,16 +1718,21 @@ export default function App() {
                         <button
                           type="button"
                           style={{ border: '1px solid #5e35b1', background: '#fff', color: '#5e35b1', borderRadius: 8, padding: isMobile ? '8px 12px' : '6px 12px', fontSize: isMobile ? '0.82rem' : '0.8rem', cursor: 'pointer', fontWeight: 500 }}
-                          onClick={() => {
+                          onClick={async () => {
                             const newName = window.prompt('請輸入教室名稱', room.name);
                             if (newName == null || newName.trim() === '') return;
                             const newTheme = window.prompt('請輸入主題', room.theme);
                             if (newTheme == null || newTheme.trim() === '') return;
-                            setRooms((prev) =>
-                              prev.map((r) =>
-                                r.id === room.id ? { ...r, name: newName.trim(), theme: newTheme.trim() } : r
-                              )
-                            );
+                            try {
+                              await persistRoomChanges(room.id, (target) => ({
+                                ...target,
+                                name: newName.trim(),
+                                theme: newTheme.trim(),
+                              }));
+                            } catch (err) {
+                              console.error('更新教室失敗：', err);
+                              alert('更新教室失敗，請稍後再試。');
+                            }
                           }}
                         >
                           編輯教室
@@ -1753,7 +1764,7 @@ export default function App() {
                             <button
                               type="button"
                               style={{ border: '1px solid #90caf9', background: '#e3f2fd', color: '#1565c0', borderRadius: 8, padding: isMobile ? '8px 12px' : '4px 10px', fontSize: isMobile ? '0.78rem' : '0.75rem', cursor: 'pointer', fontWeight: 500 }}
-                              onClick={() => {
+                              onClick={async () => {
                                 const session = window.prompt('場次（例如 S1）', p.session || '');
                                 if (session == null) return;
                                 const time = window.prompt('時間（例如 10:05-10:20）', p.time || '');
@@ -1762,18 +1773,25 @@ export default function App() {
                                 if (presenter == null || presenter.trim() === '') return;
                                 const topic = window.prompt('題目', p.topic || '');
                                 if (topic == null || topic.trim() === '') return;
-                                setRooms((prev) =>
-                                  prev.map((r) =>
-                                    r.id === room.id
-                                      ? {
-                                          ...r,
-                                          presentations: r.presentations.map((pp, i) =>
-                                            i === idx ? { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() } : pp
-                                          ),
-                                        }
-                                      : r
-                                  )
-                                );
+                                try {
+                                  await persistRoomChanges(room.id, (target) => ({
+                                    ...target,
+                                    presentations: target.presentations.map((pp, i) =>
+                                      i === idx
+                                        ? {
+                                            ...pp,
+                                            session: session.trim(),
+                                            time: time.trim(),
+                                            presenter: presenter.trim(),
+                                            topic: topic.trim(),
+                                          }
+                                        : pp
+                                    ),
+                                  }));
+                                } catch (err) {
+                                  console.error('更新報告失敗：', err);
+                                  alert('更新報告失敗，請稍後再試。');
+                                }
                               }}
                             >
                               編輯
@@ -1781,18 +1799,17 @@ export default function App() {
                             <button
                               type="button"
                               style={{ border: '1px solid #ef9a9a', background: '#ffebee', color: '#c62828', borderRadius: 8, padding: isMobile ? '8px 12px' : '4px 10px', fontSize: isMobile ? '0.78rem' : '0.75rem', cursor: 'pointer', fontWeight: 500 }}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (!window.confirm('確定要刪除這筆報告嗎？')) return;
-                                setRooms((prev) =>
-                                  prev.map((r) =>
-                                    r.id === room.id
-                                      ? {
-                                          ...r,
-                                          presentations: r.presentations.filter((_, i) => i !== idx),
-                                        }
-                                      : r
-                                  )
-                                );
+                                try {
+                                  await persistRoomChanges(room.id, (target) => ({
+                                    ...target,
+                                    presentations: target.presentations.filter((_, i) => i !== idx),
+                                  }));
+                                } catch (err) {
+                                  console.error('刪除報告失敗：', err);
+                                  alert('刪除報告失敗，請稍後再試。');
+                                }
                               }}
                             >
                               刪除
@@ -1814,7 +1831,7 @@ export default function App() {
                           fontWeight: 500,
                           width: isMobile ? '100%' : 'auto'
                         }}
-                        onClick={() => {
+                        onClick={async () => {
                           const session = window.prompt('場次（例如 S1）', '');
                           if (session == null) return;
                           const time = window.prompt('時間（例如 10:05-10:20）', '');
@@ -1823,19 +1840,23 @@ export default function App() {
                           if (presenter == null || presenter.trim() === '') return;
                           const topic = window.prompt('題目', '');
                           if (topic == null || topic.trim() === '') return;
-                          setRooms((prev) =>
-                            prev.map((r) =>
-                              r.id === room.id
-                                ? {
-                                    ...r,
-                                    presentations: [
-                                      ...r.presentations,
-                                      { session: session.trim(), time: time.trim(), presenter: presenter.trim(), topic: topic.trim() },
-                                    ],
-                                  }
-                                : r
-                            )
-                          );
+                          try {
+                            await persistRoomChanges(room.id, (target) => ({
+                              ...target,
+                              presentations: [
+                                ...target.presentations,
+                                {
+                                  session: session.trim(),
+                                  time: time.trim(),
+                                  presenter: presenter.trim(),
+                                  topic: topic.trim(),
+                                },
+                              ],
+                            }));
+                          } catch (err) {
+                            console.error('新增報告失敗：', err);
+                            alert('新增報告失敗，請稍後再試。');
+                          }
                         }}
                       >
                         ＋ 新增報告
