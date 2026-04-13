@@ -7,8 +7,8 @@ export const ADMIN_LOGIN_INTENT_KEY = 'sp26-admin-login-intent';
 export const ADMIN_PATH = '/admin';
 
 export const SCORE_ITEMS = [
-  { key: 'professionalism', label: '內容專業度', emoji: '📚' },
-  { key: 'fluency', label: '表達流暢度', emoji: '🎤' },
-  { key: 'visual', label: '視覺設計感', emoji: '🎨' },
-  { key: 'inspiration', label: '整體啟發性', emoji: '💡' },
+  { key: 'structure', label: '邏輯架構性' },
+  { key: 'fluency', label: '表達流暢度' },
+  { key: 'professionalism', label: '內容專業性' },
+  { key: 'visualDesign', label: '視覺設計感' },
 ];

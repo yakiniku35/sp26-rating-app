@@ -1003,7 +1003,7 @@ export default function App() {
               </div>
               {SCORE_ITEMS.map((item) => (
                 <div key={`${idx}-${item.key}`} style={{ ...styles.scoreRow, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: 8, marginBottom: 12 } : {}) }}>
-                  <div style={{ ...styles.scoreLabel, ...(isMobile ? { width: 'auto', fontSize: '0.85rem' } : {}) }}>{item.emoji} {item.label}</div>
+                  <div style={{ ...styles.scoreLabel, ...(isMobile ? { width: 'auto', fontSize: '0.85rem' } : {}) }}>{item.label}</div>
                   <div style={{ ...styles.scoreButtons, ...(isMobile ? { gap: 3 } : {}) }}>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                       <button
