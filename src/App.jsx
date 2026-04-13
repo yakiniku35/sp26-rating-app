@@ -9,6 +9,7 @@ import { db, auth, googleProvider } from './config/firebase';
 import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, ADMIN_EMAIL_ALLOWLIST, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
+import { ROOMS as BACKUP_ROOMS } from './constants/room_backup';
 
 // Utils
 import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedirectLogin } from './utils/helpers';
@@ -22,7 +23,27 @@ export default function App() {
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname === ADMIN_PATH ? ADMIN_PATH : '/'));
   const [userId, setUserId] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [rooms, setRooms] = useState(INITIAL_ROOMS);
+  const [rooms, setRooms] = useState(() => {
+    return INITIAL_ROOMS.map((room) => {
+      const backupRoom = BACKUP_ROOMS.find((item) => item.id === room.id);
+      return {
+        ...room,
+        presentations: room.presentations.map((presentation) => {
+          const backupPresentation = backupRoom?.presentations.find((item) => (
+            item.session === presentation.session
+            && item.time === presentation.time
+            && item.presenter === presentation.presenter
+          ));
+
+          return {
+            ...presentation,
+            internshipTopic: presentation.topic || '',
+            topic: backupPresentation?.topic || presentation.topic || '',
+          };
+        }),
+      };
+    });
+  });
   const [onlineCount, setOnlineCount] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
@@ -985,7 +1006,8 @@ export default function App() {
               <option value="">{t('choosePresenter')}</option>
               {currentRoom.presentations.map((presentation, idx) => (
                 <option key={`${presentation.presenter}-${idx}`} value={String(idx)}>
-                  [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter} - {presentation.topic}
+                  [{presentation.session || '-'} {presentation.time || ''}] {presentation.presenter}
+                  {presentation.internshipTopic ? ` - ${presentation.internshipTopic}` : ''}
                 </option>
               ))}
             </select>
