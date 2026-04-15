@@ -9,6 +9,7 @@ import { db, auth, googleProvider } from './config/firebase';
 import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
+import { SCORE_KEYS, normalizeScores, calculateAverageScore, toSearchableLower, buildLeaderboardKey } from './utils/ratingLogic';
 
 // Utils
 import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedirectLogin } from './utils/helpers';
@@ -16,28 +17,10 @@ import { buildPresentationKey, buildRatingDocId, buildAuthDebugText, prefersRedi
 // Styles
 import { styles } from './styles/appStyles';
 
-const SCORE_KEYS = SCORE_ITEMS.map((item) => item.key);
 const EMPTY_SCORES = SCORE_KEYS.reduce((acc, key) => {
   acc[key] = 0;
   return acc;
 }, {});
-
-const normalizeScores = (rawScores = {}) => {
-  const normalized = { ...EMPTY_SCORES };
-  normalized.structure = rawScores?.structure ?? rawScores?.inspiration ?? 0;
-  normalized.fluency = rawScores?.fluency ?? 0;
-  normalized.professionalism = rawScores?.professionalism ?? 0;
-  normalized.visualDesign = rawScores?.visualDesign ?? rawScores?.visual ?? 0;
-  return normalized;
-};
-
-const calculateAverageScore = (rawScores = {}) => {
-  const scores = normalizeScores(rawScores);
-  const total = SCORE_KEYS.reduce((sum, key) => sum + (scores[key] || 0), 0);
-  return SCORE_KEYS.length ? total / SCORE_KEYS.length : 0;
-};
-
-const toSearchableLower = (value) => String(value ?? '').toLowerCase();
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
@@ -498,7 +481,7 @@ export default function App() {
       const map = {};
       snapshot.forEach((doc) => {
         const d = doc.data();
-        const key = d.presentationKey || `${d.roomId || ''}||${d.session || ''}||${d.time || ''}||${d.presenter || ''}||${d.topic || ''}`;
+        const key = buildLeaderboardKey(d);
         if (!map[key]) {
           map[key] = { roomId: d.roomId, presenter: d.presenter, topic: d.topic, total: 0, count: 0 };
         }
