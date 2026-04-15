@@ -6,7 +6,7 @@ import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
 import { db, auth, googleProvider } from './config/firebase';
-import { EVENT_SCHEDULE_URL, GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
+import { GOOGLE_AUTH_ERROR_MESSAGE, ADMIN_LOGIN_INTENT_KEY, ADMIN_PATH, SCORE_ITEMS } from './constants/config';
 import { I18N } from './constants/i18n';
 import { ROOMS as INITIAL_ROOMS } from './constants/rooms';
 import { SCORE_KEYS, normalizeScores, calculateAverageScore, toSearchableLower, buildLeaderboardKey } from './utils/ratingLogic';
@@ -64,6 +64,7 @@ export default function App() {
   const [selectedPresentationIdx, setSelectedPresentationIdx] = useState('');
   const [presentationDrafts, setPresentationDrafts] = useState({});
   const [showToast, setShowToast] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -84,6 +85,8 @@ export default function App() {
   const [adminSortBy, setAdminSortBy] = useState('time-desc');
   const [adminPageSize, setAdminPageSize] = useState(50);
   const [adminCurrentPage, setAdminCurrentPage] = useState(1);
+  const [scheduleRoomId, setScheduleRoomId] = useState(() => INITIAL_ROOMS[0]?.id || '');
+  const [expandedScheduleKey, setExpandedScheduleKey] = useState('');
   const isAdminPage = currentPath === ADMIN_PATH;
   const isMobile = viewportWidth <= 768;
   const t = useCallback((key) => (I18N[language] && I18N[language][key]) || I18N.zh[key] || key, [language]);
@@ -392,6 +395,31 @@ export default function App() {
     currentRoom && selectedPresentationIdx !== ''
       ? currentRoom.presentations[Number(selectedPresentationIdx)]
       : null;
+  const activeScheduleRoom = rooms.find((room) => room.id === scheduleRoomId) || rooms[0] || null;
+  const scheduleSections = useMemo(() => {
+    if (!activeScheduleRoom || !Array.isArray(activeScheduleRoom.presentations)) return [];
+
+    const grouped = activeScheduleRoom.presentations.reduce((acc, presentation) => {
+      const sessionKey = presentation.session || 'Session';
+      if (!acc[sessionKey]) {
+        acc[sessionKey] = [];
+      }
+      acc[sessionKey].push(presentation);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([session, presentations]) => ({
+      session,
+      presentations,
+    }));
+  }, [activeScheduleRoom]);
+
+  useEffect(() => {
+    if (!rooms.length) return;
+    if (!scheduleRoomId || !rooms.some((room) => room.id === scheduleRoomId)) {
+      setScheduleRoomId(rooms[0].id);
+    }
+  }, [rooms, scheduleRoomId]);
 
   const getDraft = useCallback(
     (idx) =>
@@ -878,12 +906,10 @@ export default function App() {
   };
 
   const handleOpenSchedule = useCallback(() => {
-    if (!EVENT_SCHEDULE_URL) {
-      alert('尚未設定本次發表會議程連結');
-      return;
-    }
-    window.open(EVENT_SCHEDULE_URL, '_blank', 'noopener,noreferrer');
-  }, []);
+    setScheduleRoomId(selectedRoom || rooms[0]?.id || '');
+    setExpandedScheduleKey('');
+    setShowSchedule(true);
+  }, [rooms, selectedRoom]);
 
   const persistRoomChanges = useCallback(async (roomId, updater) => {
     const targetRoom = rooms.find((r) => r.id === roomId);
@@ -1010,24 +1036,42 @@ export default function App() {
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
             {t('scheduleDesc')}
           </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {rooms.map((room) => (
+              <div
+                key={room.id}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  background: room.id === selectedRoom ? '#dbeafe' : '#f5f7fb',
+                  color: room.id === selectedRoom ? '#0f5bd3' : '#48607a',
+                  border: room.id === selectedRoom ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.03em',
+                }}
+              >
+                {room.id}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: '0.79rem', color: '#6b7280', lineHeight: 1.6, marginBottom: 12 }}>
+            {t('scheduleHint')}
+          </div>
           <button
             type="button"
             style={{
               ...styles.primaryBtn,
               marginTop: 0,
-              opacity: EVENT_SCHEDULE_URL ? 1 : 0.7,
-              cursor: EVENT_SCHEDULE_URL ? 'pointer' : 'not-allowed',
+              width: '100%',
+              maxWidth: 420,
+              background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 45%, #0f766e 100%)',
+              boxShadow: '0 14px 28px rgba(29,78,216,0.18)',
             }}
             onClick={handleOpenSchedule}
-            disabled={!EVENT_SCHEDULE_URL}
           >
             {t('scheduleBtn')}
           </button>
-          {!EVENT_SCHEDULE_URL && (
-            <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 8 }}>
-              尚未設定連結，可於環境變數新增 REACT_APP_EVENT_SCHEDULE_URL。
-            </div>
-          )}
         </div>
 
         <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
@@ -1193,6 +1237,179 @@ export default function App() {
         <CheckCircle size={18} />
         評分已成功提交！感謝您的參與 🎉
       </div>
+
+      {showSchedule && (
+        <div style={styles.overlay} onClick={() => setShowSchedule(false)}>
+          <div
+            style={{
+              ...styles.modal,
+              maxWidth: 760,
+              background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
+              padding: isMobile ? '20px 16px 28px' : '24px 24px 30px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <div style={styles.modalTitle}>
+                  <CalendarDays size={20} color="#1d4ed8" />
+                  {t('scheduleModalTitle')}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6 }}>
+                  {t('scheduleTapHint')}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="關閉"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                onClick={() => setShowSchedule(false)}
+              >
+                <X size={22} color="#666" />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, marginBottom: 18 }}>
+              {rooms.map((room) => (
+                <button
+                  key={room.id}
+                  type="button"
+                  onClick={() => {
+                    setScheduleRoomId(room.id);
+                    setExpandedScheduleKey('');
+                  }}
+                  style={{
+                    minWidth: isMobile ? 124 : 160,
+                    textAlign: 'left',
+                    padding: isMobile ? '12px 12px' : '14px 14px',
+                    borderRadius: 16,
+                    border: room.id === activeScheduleRoom?.id ? '1px solid #60a5fa' : '1px solid #dbe4f0',
+                    background: room.id === activeScheduleRoom?.id
+                      ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
+                      : '#fff',
+                    color: '#1e3a8a',
+                    cursor: 'pointer',
+                    boxShadow: room.id === activeScheduleRoom?.id ? '0 10px 24px rgba(96,165,250,0.18)' : 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 5 }}>{t('scheduleRoomsLabel')}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>{room.id}</div>
+                  <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{room.name}</div>
+                </button>
+              ))}
+            </div>
+
+            {activeScheduleRoom ? (
+              <>
+                <div
+                  style={{
+                    padding: isMobile ? '14px 14px' : '16px 18px',
+                    borderRadius: 18,
+                    background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #0f766e 100%)',
+                    color: '#fff',
+                    marginBottom: 18,
+                    boxShadow: '0 16px 30px rgba(37,99,235,0.18)',
+                  }}
+                >
+                  <div style={{ fontSize: '0.8rem', opacity: 0.82, marginBottom: 6 }}>{t('scheduleOpenRoom')}</div>
+                  <div style={{ fontSize: isMobile ? '1rem' : '1.2rem', fontWeight: 800, marginBottom: 6 }}>
+                    {activeScheduleRoom.name}
+                  </div>
+                  <div style={{ fontSize: '0.86rem', lineHeight: 1.7, opacity: 0.95 }}>{activeScheduleRoom.theme}</div>
+                </div>
+
+                {scheduleSections.map((section) => (
+                  <div key={section.session} style={{ marginBottom: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <div
+                        style={{
+                          minWidth: 52,
+                          padding: '6px 10px',
+                          borderRadius: 999,
+                          background: '#dbeafe',
+                          color: '#1d4ed8',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {section.session}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{t('scheduleSession')}</div>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {section.presentations.map((presentation) => {
+                        const scheduleKey = `${activeScheduleRoom.id}-${presentation.session}-${presentation.time}-${presentation.presenter}`;
+                        const isExpanded = expandedScheduleKey === scheduleKey;
+                        return (
+                          <button
+                            key={scheduleKey}
+                            type="button"
+                            onClick={() => setExpandedScheduleKey(isExpanded ? '' : scheduleKey)}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              border: isExpanded ? '1px solid #93c5fd' : '1px solid #e5edf5',
+                              background: isExpanded ? '#f8fbff' : '#fff',
+                              borderRadius: 18,
+                              padding: isMobile ? '14px 14px' : '15px 16px',
+                              cursor: 'pointer',
+                              boxShadow: isExpanded ? '0 12px 26px rgba(59,130,246,0.12)' : '0 4px 10px rgba(15,23,42,0.04)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '0.76rem', color: '#64748b', marginBottom: 6 }}>{presentation.time || 'TBD'}</div>
+                                <div style={{ fontSize: isMobile ? '0.92rem' : '1rem', fontWeight: 800, color: '#172554', lineHeight: 1.4 }}>
+                                  {presentation.presenter}
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: 999,
+                                  background: isExpanded ? '#dbeafe' : '#f1f5f9',
+                                  color: isExpanded ? '#1d4ed8' : '#64748b',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 700,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isExpanded ? '−' : '+'}
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleTopic')}</div>
+                                <div style={{ fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.7, fontWeight: 600 }}>
+                                  {presentation.topic || '—'}
+                                </div>
+                                {!!presentation['實習'] && (
+                                  <div style={{ marginTop: 12 }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleInternship')}</div>
+                                    <div style={{ fontSize: '0.88rem', color: '#0f766e', lineHeight: 1.6, fontWeight: 700 }}>
+                                      {presentation['實習']}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>{t('scheduleNoData')}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showLeaderboard && (
         <div style={styles.overlay} onClick={() => setShowLeaderboard(false)}>
