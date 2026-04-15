@@ -37,16 +37,19 @@ const calculateAverageScore = (rawScores = {}) => {
   return SCORE_KEYS.length ? total / SCORE_KEYS.length : 0;
 };
 
+const toSearchableLower = (value) => String(value ?? '').toLowerCase();
+
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
     const backupRoom = INITIAL_ROOMS.find((r) => r.id === room.id);
+    const backupPresentations = Array.isArray(backupRoom?.presentations) ? backupRoom.presentations : [];
     return {
       id: room.id,
       name: room.name || room.id,
       theme: room.theme || '',
       presentations: Array.isArray(room.presentations)
         ? room.presentations.map((presentation) => {
-          const backupPresentation = backupRoom?.presentations.find(
+          const backupPresentation = backupPresentations.find(
             (p) => p.presenter === presentation.presenter && p.time === presentation.time
           );
           const internshipUnit = backupPresentation?.['實習'] ?? presentation['實習'] ?? '';
@@ -495,7 +498,7 @@ export default function App() {
       const map = {};
       snapshot.forEach((doc) => {
         const d = doc.data();
-        const key = `${d.roomId}||${d.presenter}||${d.topic}`;
+        const key = d.presentationKey || `${d.roomId || ''}||${d.session || ''}||${d.time || ''}||${d.presenter || ''}||${d.topic || ''}`;
         if (!map[key]) {
           map[key] = { roomId: d.roomId, presenter: d.presenter, topic: d.topic, total: 0, count: 0 };
         }
@@ -635,11 +638,11 @@ export default function App() {
       const searchLower = adminSearchText.toLowerCase();
       result = result.filter((r) => {
         return (
-          r.presenter?.toLowerCase().includes(searchLower) ||
-          r.topic?.toLowerCase().includes(searchLower) ||
-          r.raterName?.toLowerCase().includes(searchLower) ||
-          r.raterEmail?.toLowerCase().includes(searchLower) ||
-          r.comment?.toLowerCase().includes(searchLower)
+          toSearchableLower(r.presenter).includes(searchLower) ||
+          toSearchableLower(r.topic).includes(searchLower) ||
+          toSearchableLower(r.raterName).includes(searchLower) ||
+          toSearchableLower(r.raterEmail).includes(searchLower) ||
+          toSearchableLower(r.comment).includes(searchLower)
         );
       });
     }
