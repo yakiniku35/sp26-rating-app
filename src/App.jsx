@@ -39,13 +39,17 @@ const calculateAverageScore = (rawScores = {}) => {
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
+    const backupRoom = INITIAL_ROOMS.find((r) => r.id === room.id);
     return {
       id: room.id,
       name: room.name || room.id,
       theme: room.theme || '',
       presentations: Array.isArray(room.presentations)
         ? room.presentations.map((presentation) => {
-          const internshipUnit = presentation['實習'] || '';
+          const backupPresentation = backupRoom?.presentations.find(
+            (p) => p.presenter === presentation.presenter && p.time === presentation.time
+          );
+          const internshipUnit = backupPresentation?.['實習'] ?? presentation['實習'] ?? '';
           const internshipTopic = internshipUnit || presentation.internshipTopic || '';
 
           return {
