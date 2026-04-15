@@ -22,6 +22,12 @@ const EMPTY_SCORES = SCORE_KEYS.reduce((acc, key) => {
   return acc;
 }, {});
 
+const SCHEDULE_POSTERS = [
+  { id: 'A646', src: '/schedule/a646.jpg', fallbackSrc: '/schedule/a646-poster.svg' },
+  { id: 'A604', src: '/schedule/a604.jpg', fallbackSrc: '/schedule/a604-poster.svg' },
+  { id: 'A605', src: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
+];
+
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
     const backupRoom = INITIAL_ROOMS.find((r) => r.id === room.id);
@@ -87,6 +93,7 @@ export default function App() {
   const [adminCurrentPage, setAdminCurrentPage] = useState(1);
   const [scheduleRoomId, setScheduleRoomId] = useState(() => INITIAL_ROOMS[0]?.id || '');
   const [expandedScheduleKey, setExpandedScheduleKey] = useState('');
+  const [scheduleViewMode, setScheduleViewMode] = useState('poster');
   const isAdminPage = currentPath === ADMIN_PATH;
   const isMobile = viewportWidth <= 768;
   const t = useCallback((key) => (I18N[language] && I18N[language][key]) || I18N.zh[key] || key, [language]);
@@ -396,6 +403,7 @@ export default function App() {
       ? currentRoom.presentations[Number(selectedPresentationIdx)]
       : null;
   const activeScheduleRoom = rooms.find((room) => room.id === scheduleRoomId) || rooms[0] || null;
+  const activeSchedulePoster = SCHEDULE_POSTERS.find((poster) => poster.id === activeScheduleRoom?.id) || SCHEDULE_POSTERS[0] || null;
   const scheduleSections = useMemo(() => {
     if (!activeScheduleRoom || !Array.isArray(activeScheduleRoom.presentations)) return [];
 
@@ -908,6 +916,7 @@ export default function App() {
   const handleOpenSchedule = useCallback(() => {
     setScheduleRoomId(selectedRoom || rooms[0]?.id || '');
     setExpandedScheduleKey('');
+    setScheduleViewMode('poster');
     setShowSchedule(true);
   }, [rooms, selectedRoom]);
 
@@ -1036,24 +1045,44 @@ export default function App() {
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
             {t('scheduleDesc')}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-            {rooms.map((room) => (
-              <div
-                key={room.id}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 999,
-                  background: room.id === selectedRoom ? '#dbeafe' : '#f5f7fb',
-                  color: room.id === selectedRoom ? '#0f5bd3' : '#48607a',
-                  border: room.id === selectedRoom ? '1px solid #93c5fd' : '1px solid #e5e7eb',
-                  fontSize: '0.76rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.03em',
-                }}
-              >
-                {room.id}
-              </div>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 14 }}>
+            {SCHEDULE_POSTERS.map((poster) => {
+              const room = rooms.find((item) => item.id === poster.id);
+              return (
+                <button
+                  key={poster.id}
+                  type="button"
+                  onClick={() => {
+                    setScheduleRoomId(poster.id);
+                    setScheduleViewMode('poster');
+                    setShowSchedule(true);
+                  }}
+                  style={{
+                    border: '1px solid #dbe4f0',
+                    background: '#fff',
+                    borderRadius: 18,
+                    padding: 10,
+                    cursor: 'pointer',
+                    boxShadow: '0 10px 22px rgba(15,23,42,0.06)',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ borderRadius: 14, overflow: 'hidden', background: '#f8fafc', marginBottom: 10 }}>
+                    <img
+                      src={poster.src}
+                      alt={`${poster.id} schedule poster`}
+                      onError={(e) => {
+                        if (e.currentTarget.src.endsWith(poster.fallbackSrc)) return;
+                        e.currentTarget.src = poster.fallbackSrc;
+                      }}
+                      style={{ display: 'block', width: '100%', aspectRatio: '3 / 4', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '0.88rem', color: '#1e3a8a', fontWeight: 800 }}>{poster.id}</div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4, lineHeight: 1.45 }}>{room?.name || poster.id}</div>
+                </button>
+              );
+            })}
           </div>
           <div style={{ fontSize: '0.79rem', color: '#6b7280', lineHeight: 1.6, marginBottom: 12 }}>
             {t('scheduleHint')}
@@ -1256,7 +1285,7 @@ export default function App() {
                   {t('scheduleModalTitle')}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6 }}>
-                  {t('scheduleTapHint')}
+                  {scheduleViewMode === 'poster' ? t('schedulePosterHint') : t('scheduleTapHint')}
                 </div>
               </div>
               <button
@@ -1266,6 +1295,41 @@ export default function App() {
                 onClick={() => setShowSchedule(false)}
               >
                 <X size={22} color="#666" />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setScheduleViewMode('poster')}
+                style={{
+                  border: scheduleViewMode === 'poster' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
+                  background: scheduleViewMode === 'poster' ? '#dbeafe' : '#fff',
+                  color: scheduleViewMode === 'poster' ? '#1d4ed8' : '#475569',
+                  borderRadius: 999,
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                }}
+              >
+                {t('schedulePosterMode')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleViewMode('interactive')}
+                style={{
+                  border: scheduleViewMode === 'interactive' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
+                  background: scheduleViewMode === 'interactive' ? '#dbeafe' : '#fff',
+                  color: scheduleViewMode === 'interactive' ? '#1d4ed8' : '#475569',
+                  borderRadius: 999,
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                }}
+              >
+                {t('scheduleInteractiveMode')}
               </button>
             </div>
 
@@ -1319,90 +1383,117 @@ export default function App() {
                   <div style={{ fontSize: '0.86rem', lineHeight: 1.7, opacity: 0.95 }}>{activeScheduleRoom.theme}</div>
                 </div>
 
-                {scheduleSections.map((section) => (
-                  <div key={section.session} style={{ marginBottom: 18 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <div
-                        style={{
-                          minWidth: 52,
-                          padding: '6px 10px',
-                          borderRadius: 999,
-                          background: '#dbeafe',
-                          color: '#1d4ed8',
-                          fontSize: '0.78rem',
-                          fontWeight: 800,
-                          textAlign: 'center',
+                {scheduleViewMode === 'poster' && activeSchedulePoster ? (
+                  <div>
+                    <div
+                      style={{
+                        borderRadius: 24,
+                        overflow: 'hidden',
+                        border: '1px solid #dbe4f0',
+                        boxShadow: '0 24px 60px rgba(15,23,42,0.12)',
+                        background: '#fff',
+                      }}
+                    >
+                      <img
+                        src={activeSchedulePoster.src}
+                        alt={`${activeSchedulePoster.id} poster`}
+                        onError={(e) => {
+                          if (e.currentTarget.src.endsWith(activeSchedulePoster.fallbackSrc)) return;
+                          e.currentTarget.src = activeSchedulePoster.fallbackSrc;
                         }}
-                      >
-                        {section.session}
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{t('scheduleSession')}</div>
+                        style={{ display: 'block', width: '100%', height: 'auto' }}
+                      />
                     </div>
-
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {section.presentations.map((presentation) => {
-                        const scheduleKey = `${activeScheduleRoom.id}-${presentation.session}-${presentation.time}-${presentation.presenter}`;
-                        const isExpanded = expandedScheduleKey === scheduleKey;
-                        return (
-                          <button
-                            key={scheduleKey}
-                            type="button"
-                            onClick={() => setExpandedScheduleKey(isExpanded ? '' : scheduleKey)}
-                            style={{
-                              width: '100%',
-                              textAlign: 'left',
-                              border: isExpanded ? '1px solid #93c5fd' : '1px solid #e5edf5',
-                              background: isExpanded ? '#f8fbff' : '#fff',
-                              borderRadius: 18,
-                              padding: isMobile ? '14px 14px' : '15px 16px',
-                              cursor: 'pointer',
-                              boxShadow: isExpanded ? '0 12px 26px rgba(59,130,246,0.12)' : '0 4px 10px rgba(15,23,42,0.04)',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: '0.76rem', color: '#64748b', marginBottom: 6 }}>{presentation.time || 'TBD'}</div>
-                                <div style={{ fontSize: isMobile ? '0.92rem' : '1rem', fontWeight: 800, color: '#172554', lineHeight: 1.4 }}>
-                                  {presentation.presenter}
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: '6px 10px',
-                                  borderRadius: 999,
-                                  background: isExpanded ? '#dbeafe' : '#f1f5f9',
-                                  color: isExpanded ? '#1d4ed8' : '#64748b',
-                                  fontSize: '0.76rem',
-                                  fontWeight: 700,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {isExpanded ? '−' : '+'}
-                              </div>
-                            </div>
-
-                            {isExpanded && (
-                              <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleTopic')}</div>
-                                <div style={{ fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.7, fontWeight: 600 }}>
-                                  {presentation.topic || '—'}
-                                </div>
-                                {!!presentation['實習'] && (
-                                  <div style={{ marginTop: 12 }}>
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleInternship')}</div>
-                                    <div style={{ fontSize: '0.88rem', color: '#0f766e', lineHeight: 1.6, fontWeight: 700 }}>
-                                      {presentation['實習']}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
+                    <div style={{ marginTop: 12, fontSize: '0.78rem', color: '#64748b', lineHeight: 1.6, textAlign: 'center' }}>
+                      {t('schedulePosterFootnote')}
                     </div>
                   </div>
-                ))}
+                ) : (
+                  scheduleSections.map((section) => (
+                    <div key={section.session} style={{ marginBottom: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <div
+                          style={{
+                            minWidth: 52,
+                            padding: '6px 10px',
+                            borderRadius: 999,
+                            background: '#dbeafe',
+                            color: '#1d4ed8',
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {section.session}
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{t('scheduleSession')}</div>
+                      </div>
+
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {section.presentations.map((presentation) => {
+                          const scheduleKey = `${activeScheduleRoom.id}-${presentation.session}-${presentation.time}-${presentation.presenter}`;
+                          const isExpanded = expandedScheduleKey === scheduleKey;
+                          return (
+                            <button
+                              key={scheduleKey}
+                              type="button"
+                              onClick={() => setExpandedScheduleKey(isExpanded ? '' : scheduleKey)}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                border: isExpanded ? '1px solid #93c5fd' : '1px solid #e5edf5',
+                                background: isExpanded ? '#f8fbff' : '#fff',
+                                borderRadius: 18,
+                                padding: isMobile ? '14px 14px' : '15px 16px',
+                                cursor: 'pointer',
+                                boxShadow: isExpanded ? '0 12px 26px rgba(59,130,246,0.12)' : '0 4px 10px rgba(15,23,42,0.04)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginBottom: 6 }}>{presentation.time || 'TBD'}</div>
+                                  <div style={{ fontSize: isMobile ? '0.92rem' : '1rem', fontWeight: 800, color: '#172554', lineHeight: 1.4 }}>
+                                    {presentation.presenter}
+                                  </div>
+                                </div>
+                                <div
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: 999,
+                                    background: isExpanded ? '#dbeafe' : '#f1f5f9',
+                                    color: isExpanded ? '#1d4ed8' : '#64748b',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 700,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isExpanded ? '−' : '+'}
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleTopic')}</div>
+                                  <div style={{ fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.7, fontWeight: 600 }}>
+                                    {presentation.topic || '—'}
+                                  </div>
+                                  {!!presentation['實習'] && (
+                                    <div style={{ marginTop: 12 }}>
+                                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>{t('scheduleInternship')}</div>
+                                      <div style={{ fontSize: '0.88rem', color: '#0f766e', lineHeight: 1.6, fontWeight: 700 }}>
+                                        {presentation['實習']}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
               </>
             ) : (
               <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>{t('scheduleNoData')}</div>
