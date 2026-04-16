@@ -1115,7 +1115,7 @@ export default function App() {
           </div>
 
           <select
-            style={{ ...styles.select, ...(isMobile ? { fontSize: '0.9rem', padding: '11px 12px' } : {}) }}
+            style={{ ...styles.select, marginBottom: 4, ...(isMobile ? { fontSize: '0.9rem', padding: '11px 12px' } : {}) }}
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
@@ -1131,7 +1131,7 @@ export default function App() {
 
           {currentRoom && (
             <select
-              style={{ ...styles.select, marginTop: 10, marginBottom: 0, ...(isMobile ? { fontSize: '0.88rem', padding: '11px 12px' } : {}) }}
+              style={{ ...styles.select, marginTop: 2, marginBottom: 0, ...(isMobile ? { fontSize: '0.88rem', padding: '11px 12px' } : {}) }}
               value={selectedPresentationIdx}
               onChange={(e) => setSelectedPresentationIdx(e.target.value)}
             >
