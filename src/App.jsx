@@ -1053,9 +1053,6 @@ export default function App() {
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
             {t('scheduleDesc')}
           </div>
-          <div style={{ fontSize: '0.79rem', color: '#6b7280', lineHeight: 1.6, marginBottom: 12 }}>
-            {t('scheduleHint')}
-          </div>
           <button
             type="button"
             style={{
