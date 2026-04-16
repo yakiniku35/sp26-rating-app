@@ -9,7 +9,7 @@ export const I18N = {
     loadingAuth: '讀取登入狀態中',
     loadingHint: '請稍候，系統正在確認您的登入狀態。',
     scheduleTitle: '本次發表會議程',
-    scheduleDesc: '查看三個會場的完整議程，點一下即可展開題目與實習資訊。',
+    scheduleDesc: '三個會場的完整議程，點一下即可展開題目資訊。',
     scheduleBtn: '觀看議程',
     scheduleHint: '議程已內建在系統中，現場用手機也能快速打開。',
     scheduleTapHint: '點一下每張卡片，可展開報告題目與單位資訊。',
