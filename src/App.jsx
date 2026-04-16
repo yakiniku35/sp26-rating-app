@@ -28,6 +28,18 @@ const SCHEDULE_POSTERS = [
   { id: 'A605', src: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
 ];
 
+const PRELOADED_POSTER_URLS = new Set();
+
+const preloadPosterAsset = (src) => {
+  if (!src || typeof window === 'undefined' || PRELOADED_POSTER_URLS.has(src)) {
+    return;
+  }
+  PRELOADED_POSTER_URLS.add(src);
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+};
+
 const ENABLE_INTERACTIVE_SCHEDULE = false; // 如果要開啟互動式議程，把這行改成 true 就好
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
@@ -436,6 +448,33 @@ export default function App() {
       setScheduleViewMode('poster');
     }
   }, [scheduleViewMode]);
+
+  useEffect(() => {
+    const firstPoster = SCHEDULE_POSTERS[0];
+    if (!firstPoster) return;
+
+    const warmUp = () => {
+      preloadPosterAsset(firstPoster.src);
+      preloadPosterAsset(firstPoster.fallbackSrc);
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(warmUp, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(warmUp, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (!showSchedule) return;
+
+    SCHEDULE_POSTERS.forEach((poster) => {
+      preloadPosterAsset(poster.src);
+      preloadPosterAsset(poster.fallbackSrc);
+    });
+  }, [showSchedule]);
 
   const getDraft = useCallback(
     (idx) =>
@@ -1349,6 +1388,9 @@ export default function App() {
                       <img
                         src={activeSchedulePoster.src}
                         alt={`${activeSchedulePoster.id} poster`}
+                        loading="eager"
+                        decoding="async"
+                        fetchPriority="high"
                         onError={(e) => {
                           if (e.currentTarget.src.endsWith(activeSchedulePoster.fallbackSrc)) return;
                           e.currentTarget.src = activeSchedulePoster.fallbackSrc;
