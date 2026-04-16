@@ -1130,17 +1130,6 @@ export default function App() {
           </select>
 
           {currentRoom && (
-            <div style={{ fontSize: '0.8rem', color: '#1a73e8', background: '#e8f0fe', padding: '8px 12px', borderRadius: 8, marginBottom: 10 }}>
-              📌 主題：{currentRoom.theme}
-            </div>
-          )}
-          {currentRoom && (
-            <div style={{ fontSize: '0.8rem', color: '#1565c0', background: '#e3f2fd', padding: '8px 12px', borderRadius: 8, marginTop: 6 }}>
-              請再選擇要評分的報告者，共 {currentRoom.presentations.length} 位同學
-            </div>
-          )}
-
-          {currentRoom && (
             <select
               style={{ ...styles.select, marginTop: 10, marginBottom: 0, ...(isMobile ? { fontSize: '0.88rem', padding: '11px 12px' } : {}) }}
               value={selectedPresentationIdx}
