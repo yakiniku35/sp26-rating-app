@@ -1268,7 +1268,7 @@ export default function App() {
               ...styles.modal,
               maxWidth: 760,
               background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
-              padding: isMobile ? '20px 16px 28px' : '24px 24px 30px',
+              padding: isMobile ? '12px 14px 18px' : '14px 20px 22px',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1326,7 +1326,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, marginBottom: 18 }}>
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, marginBottom: 10 }}>
               {rooms.map((room) => (
                 <button
                   key={room.id}
@@ -1384,7 +1384,13 @@ export default function App() {
                           if (e.currentTarget.src.endsWith(activeSchedulePoster.fallbackSrc)) return;
                           e.currentTarget.src = activeSchedulePoster.fallbackSrc;
                         }}
-                        style={{ display: 'block', width: '100%', height: 'auto' }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: isMobile ? '56vh' : '60vh',
+                          maxHeight: 'calc(100vh - 260px)',
+                          objectFit: 'contain',
+                        }}
                       />
                     </div>
                     <div style={{ marginTop: 10, textAlign: 'center' }}>
