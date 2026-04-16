@@ -23,9 +23,9 @@ const EMPTY_SCORES = SCORE_KEYS.reduce((acc, key) => {
 }, {});
 
 const SCHEDULE_POSTERS = [
-  { id: 'A646', src: '/schedule/a646.jpg', fallbackSrc: '/schedule/a646-poster.svg' },
-  { id: 'A604', src: '/schedule/a604.jpg', fallbackSrc: '/schedule/a604-poster.svg' },
-  { id: 'A605', src: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
+  { id: 'A646', webpSrc: '/schedule/a646.webp', jpgSrc: '/schedule/a646.jpg', fallbackSrc: '/schedule/a646-poster.svg' },
+  { id: 'A604', webpSrc: '/schedule/a604.webp', jpgSrc: '/schedule/a604.jpg', fallbackSrc: '/schedule/a604-poster.svg' },
+  { id: 'A605', webpSrc: '/schedule/a605.webp', jpgSrc: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
 ];
 
 const PRELOADED_POSTER_URLS = new Set();
@@ -454,7 +454,8 @@ export default function App() {
     if (!firstPoster) return;
 
     const warmUp = () => {
-      preloadPosterAsset(firstPoster.src);
+      preloadPosterAsset(firstPoster.webpSrc);
+      preloadPosterAsset(firstPoster.jpgSrc);
       preloadPosterAsset(firstPoster.fallbackSrc);
     };
 
@@ -471,7 +472,8 @@ export default function App() {
     if (!showSchedule) return;
 
     SCHEDULE_POSTERS.forEach((poster) => {
-      preloadPosterAsset(poster.src);
+      preloadPosterAsset(poster.webpSrc);
+      preloadPosterAsset(poster.jpgSrc);
       preloadPosterAsset(poster.fallbackSrc);
     });
   }, [showSchedule]);
@@ -1375,14 +1377,20 @@ export default function App() {
                       }}
                     >
                       <img
-                        src={activeSchedulePoster.src}
+                        src={activeSchedulePoster.webpSrc}
                         alt={`${activeSchedulePoster.id} poster`}
                         loading="eager"
                         decoding="async"
                         fetchPriority="high"
                         onError={(e) => {
-                          if (e.currentTarget.src.endsWith(activeSchedulePoster.fallbackSrc)) return;
-                          e.currentTarget.src = activeSchedulePoster.fallbackSrc;
+                          const currentSrc = e.currentTarget.getAttribute('src') || '';
+                          if (currentSrc.endsWith('.webp')) {
+                            e.currentTarget.src = activeSchedulePoster.jpgSrc;
+                            return;
+                          }
+                          if (currentSrc.endsWith('.jpg') || currentSrc.endsWith('.jpeg')) {
+                            e.currentTarget.src = activeSchedulePoster.fallbackSrc;
+                          }
                         }}
                         style={{
                           display: 'block',
