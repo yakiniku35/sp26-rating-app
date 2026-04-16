@@ -1053,36 +1053,6 @@ export default function App() {
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
             {t('scheduleDesc')}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-            {SCHEDULE_POSTERS.map((poster) => {
-              const room = rooms.find((item) => item.id === poster.id);
-              return (
-                <button
-                  key={poster.id}
-                  type="button"
-                  onClick={() => {
-                    setScheduleRoomId(poster.id);
-                    setScheduleViewMode('poster');
-                    setShowSchedule(true);
-                  }}
-                  style={{
-                    border: '1px solid #cfe0f7',
-                    background: '#f8fbff',
-                    borderRadius: 999,
-                    padding: '7px 12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>{t('scheduleRoomsLabel')}</div>
-                  <div style={{ fontSize: '0.88rem', color: '#1e3a8a', fontWeight: 800 }}>{poster.id}</div>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b', lineHeight: 1.45 }}>{room?.name || poster.id}</div>
-                </button>
-              );
-            })}
-          </div>
           <div style={{ fontSize: '0.79rem', color: '#6b7280', lineHeight: 1.6, marginBottom: 12 }}>
             {t('scheduleHint')}
           </div>
