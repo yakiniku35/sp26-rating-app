@@ -1344,9 +1344,9 @@ export default function App() {
                     setExpandedScheduleKey('');
                   }}
                   style={{
-                    minWidth: isMobile ? 96 : 160,
+                    minWidth: isMobile ? 78 : 160,
                     textAlign: 'left',
-                    padding: isMobile ? '8px 9px' : '14px 14px',
+                    padding: isMobile ? '7px 8px' : '14px 14px',
                     borderRadius: isMobile ? 12 : 16,
                     border: room.id === activeScheduleRoom?.id ? '1px solid #60a5fa' : '1px solid #dbe4f0',
                     background: room.id === activeScheduleRoom?.id
@@ -1358,9 +1358,13 @@ export default function App() {
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#64748b', marginBottom: isMobile ? 3 : 5 }}>{t('scheduleRoomsLabel')}</div>
-                  <div style={{ fontSize: isMobile ? '0.88rem' : '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>{room.id}</div>
-                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.76rem', color: '#475569', marginTop: isMobile ? 2 : 4, lineHeight: 1.4 }}>{room.name}</div>
+                  {!isMobile && (
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 5 }}>{t('scheduleRoomsLabel')}</div>
+                  )}
+                  <div style={{ fontSize: isMobile ? '0.86rem' : '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>{room.id}</div>
+                  {!isMobile && (
+                    <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{room.name}</div>
+                  )}
                 </button>
               ))}
             </div>
@@ -1387,6 +1391,10 @@ export default function App() {
                         }}
                         style={{ display: 'block', width: '100%', height: 'auto' }}
                       />
+                    </div>
+                    <div style={{ marginTop: 10, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 800 }}>{activeScheduleRoom.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 4, lineHeight: 1.5 }}>{activeScheduleRoom.theme}</div>
                     </div>
                     <div style={{ marginTop: 12, fontSize: '0.78rem', color: '#64748b', lineHeight: 1.6, textAlign: 'center' }}>
                       {t('schedulePosterFootnote')}
