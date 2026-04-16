@@ -1250,9 +1250,6 @@ export default function App() {
                   <CalendarDays size={20} color="#1d4ed8" />
                   {t('scheduleModalTitle')}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6 }}>
-                  {scheduleViewMode === 'poster' || !ENABLE_INTERACTIVE_SCHEDULE ? t('schedulePosterHint') : t('scheduleTapHint')}
-                </div>
               </div>
               <button
                 type="button"
