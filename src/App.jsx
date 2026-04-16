@@ -1344,10 +1344,10 @@ export default function App() {
                     setExpandedScheduleKey('');
                   }}
                   style={{
-                    minWidth: isMobile ? 124 : 160,
+                    minWidth: isMobile ? 96 : 160,
                     textAlign: 'left',
-                    padding: isMobile ? '12px 12px' : '14px 14px',
-                    borderRadius: 16,
+                    padding: isMobile ? '8px 9px' : '14px 14px',
+                    borderRadius: isMobile ? 12 : 16,
                     border: room.id === activeScheduleRoom?.id ? '1px solid #60a5fa' : '1px solid #dbe4f0',
                     background: room.id === activeScheduleRoom?.id
                       ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
@@ -1358,32 +1358,15 @@ export default function App() {
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 5 }}>{t('scheduleRoomsLabel')}</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>{room.id}</div>
-                  <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{room.name}</div>
+                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.78rem', color: '#64748b', marginBottom: isMobile ? 3 : 5 }}>{t('scheduleRoomsLabel')}</div>
+                  <div style={{ fontSize: isMobile ? '0.88rem' : '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>{room.id}</div>
+                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.76rem', color: '#475569', marginTop: isMobile ? 2 : 4, lineHeight: 1.4 }}>{room.name}</div>
                 </button>
               ))}
             </div>
 
             {activeScheduleRoom ? (
               <>
-                <div
-                  style={{
-                    padding: isMobile ? '14px 14px' : '16px 18px',
-                    borderRadius: 18,
-                    background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #0f766e 100%)',
-                    color: '#fff',
-                    marginBottom: 18,
-                    boxShadow: '0 16px 30px rgba(37,99,235,0.18)',
-                  }}
-                >
-                  <div style={{ fontSize: '0.8rem', opacity: 0.82, marginBottom: 6 }}>{t('scheduleOpenRoom')}</div>
-                  <div style={{ fontSize: isMobile ? '1rem' : '1.2rem', fontWeight: 800, marginBottom: 6 }}>
-                    {activeScheduleRoom.name}
-                  </div>
-                  <div style={{ fontSize: '0.86rem', lineHeight: 1.7, opacity: 0.95 }}>{activeScheduleRoom.theme}</div>
-                </div>
-
                 {(scheduleViewMode === 'poster' || !ENABLE_INTERACTIVE_SCHEDULE) && activeSchedulePoster ? (
                   <div>
                     <div
