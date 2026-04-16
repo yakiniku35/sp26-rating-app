@@ -28,7 +28,7 @@ const SCHEDULE_POSTERS = [
   { id: 'A605', src: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
 ];
 
-const ENABLE_INTERACTIVE_SCHEDULE = false;
+const ENABLE_INTERACTIVE_SCHEDULE = false; // 如果要開啟互動式議程，把這行改成 true 就好
 
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
