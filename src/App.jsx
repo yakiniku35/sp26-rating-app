@@ -28,6 +28,8 @@ const SCHEDULE_POSTERS = [
   { id: 'A605', src: '/schedule/a605.jpg', fallbackSrc: '/schedule/a605-poster.svg' },
 ];
 
+const ENABLE_INTERACTIVE_SCHEDULE = false;
+
 const mergeRoomsWithBackup = (sourceRooms = []) => {
   return sourceRooms.map((room) => {
     const backupRoom = INITIAL_ROOMS.find((r) => r.id === room.id);
@@ -428,6 +430,12 @@ export default function App() {
       setScheduleRoomId(rooms[0].id);
     }
   }, [rooms, scheduleRoomId]);
+
+  useEffect(() => {
+    if (!ENABLE_INTERACTIVE_SCHEDULE && scheduleViewMode !== 'poster') {
+      setScheduleViewMode('poster');
+    }
+  }, [scheduleViewMode]);
 
   const getDraft = useCallback(
     (idx) =>
@@ -1045,7 +1053,7 @@ export default function App() {
           <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
             {t('scheduleDesc')}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
             {SCHEDULE_POSTERS.map((poster) => {
               const room = rooms.find((item) => item.id === poster.id);
               return (
@@ -1058,28 +1066,19 @@ export default function App() {
                     setShowSchedule(true);
                   }}
                   style={{
-                    border: '1px solid #dbe4f0',
-                    background: '#fff',
-                    borderRadius: 18,
-                    padding: 10,
+                    border: '1px solid #cfe0f7',
+                    background: '#f8fbff',
+                    borderRadius: 999,
+                    padding: '7px 12px',
                     cursor: 'pointer',
-                    boxShadow: '0 10px 22px rgba(15,23,42,0.06)',
-                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                   }}
                 >
-                  <div style={{ borderRadius: 14, overflow: 'hidden', background: '#f8fafc', marginBottom: 10 }}>
-                    <img
-                      src={poster.src}
-                      alt={`${poster.id} schedule poster`}
-                      onError={(e) => {
-                        if (e.currentTarget.src.endsWith(poster.fallbackSrc)) return;
-                        e.currentTarget.src = poster.fallbackSrc;
-                      }}
-                      style={{ display: 'block', width: '100%', aspectRatio: '3 / 4', objectFit: 'cover' }}
-                    />
-                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>{t('scheduleRoomsLabel')}</div>
                   <div style={{ fontSize: '0.88rem', color: '#1e3a8a', fontWeight: 800 }}>{poster.id}</div>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4, lineHeight: 1.45 }}>{room?.name || poster.id}</div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', lineHeight: 1.45 }}>{room?.name || poster.id}</div>
                 </button>
               );
             })}
@@ -1285,7 +1284,7 @@ export default function App() {
                   {t('scheduleModalTitle')}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6 }}>
-                  {scheduleViewMode === 'poster' ? t('schedulePosterHint') : t('scheduleTapHint')}
+                  {scheduleViewMode === 'poster' || !ENABLE_INTERACTIVE_SCHEDULE ? t('schedulePosterHint') : t('scheduleTapHint')}
                 </div>
               </div>
               <button
@@ -1298,40 +1297,42 @@ export default function App() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setScheduleViewMode('poster')}
-                style={{
-                  border: scheduleViewMode === 'poster' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
-                  background: scheduleViewMode === 'poster' ? '#dbeafe' : '#fff',
-                  color: scheduleViewMode === 'poster' ? '#1d4ed8' : '#475569',
-                  borderRadius: 999,
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                  fontSize: '0.82rem',
-                  fontWeight: 800,
-                }}
-              >
-                {t('schedulePosterMode')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleViewMode('interactive')}
-                style={{
-                  border: scheduleViewMode === 'interactive' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
-                  background: scheduleViewMode === 'interactive' ? '#dbeafe' : '#fff',
-                  color: scheduleViewMode === 'interactive' ? '#1d4ed8' : '#475569',
-                  borderRadius: 999,
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                  fontSize: '0.82rem',
-                  fontWeight: 800,
-                }}
-              >
-                {t('scheduleInteractiveMode')}
-              </button>
-            </div>
+            {ENABLE_INTERACTIVE_SCHEDULE && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setScheduleViewMode('poster')}
+                  style={{
+                    border: scheduleViewMode === 'poster' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
+                    background: scheduleViewMode === 'poster' ? '#dbeafe' : '#fff',
+                    color: scheduleViewMode === 'poster' ? '#1d4ed8' : '#475569',
+                    borderRadius: 999,
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {t('schedulePosterMode')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleViewMode('interactive')}
+                  style={{
+                    border: scheduleViewMode === 'interactive' ? '1px solid #60a5fa' : '1px solid #dbe4f0',
+                    background: scheduleViewMode === 'interactive' ? '#dbeafe' : '#fff',
+                    color: scheduleViewMode === 'interactive' ? '#1d4ed8' : '#475569',
+                    borderRadius: 999,
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {t('scheduleInteractiveMode')}
+                </button>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, marginBottom: 18 }}>
               {rooms.map((room) => (
@@ -1383,7 +1384,7 @@ export default function App() {
                   <div style={{ fontSize: '0.86rem', lineHeight: 1.7, opacity: 0.95 }}>{activeScheduleRoom.theme}</div>
                 </div>
 
-                {scheduleViewMode === 'poster' && activeSchedulePoster ? (
+                {(scheduleViewMode === 'poster' || !ENABLE_INTERACTIVE_SCHEDULE) && activeSchedulePoster ? (
                   <div>
                     <div
                       style={{
