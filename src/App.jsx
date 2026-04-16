@@ -1387,8 +1387,8 @@ export default function App() {
                         style={{
                           display: 'block',
                           width: '100%',
-                          height: isMobile ? '56vh' : '60vh',
-                          maxHeight: 'calc(100vh - 260px)',
+                          height: isMobile ? '64vh' : '70vh',
+                          maxHeight: 'calc(100vh - 220px)',
                           objectFit: 'contain',
                         }}
                       />
