@@ -85,7 +85,6 @@ export default function App() {
   const [presentationDrafts, setPresentationDrafts] = useState({});
   const [showToast, setShowToast] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -560,7 +559,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!showLeaderboard) return;
+    if (!isAdminPage || !isAdminUser) return;
     setLeaderboardLoading(true);
     const unsub = onSnapshot(collection(db, 'ratings'), (snapshot) => {
       const map = {};
@@ -584,9 +583,7 @@ export default function App() {
       setLeaderboardLoading(false);
     });
     return () => unsub();
-  }, [showLeaderboard]);
-
-  const handleOpenLeaderboard = () => setShowLeaderboard(true);
+  }, [isAdminPage, isAdminUser]);
 
   const handleOpenAdmin = async () => {
     if (!userId || !auth.currentUser) {
@@ -1063,10 +1060,6 @@ export default function App() {
               {t('logout')}
             </button>
           )}
-          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenLeaderboard}>
-            <BarChart3 size={16} />
-            {t('leaderboard')}
-          </button>
           <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenAdmin}>
             <Users size={16} />
             {t('admin')}
@@ -1503,57 +1496,6 @@ export default function App() {
         </div>
       )}
 
-      {showLeaderboard && (
-        <div style={styles.overlay} onClick={() => setShowLeaderboard(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div style={styles.modalTitle}>
-                <Trophy size={20} color="#ffc107" />
-                即時排行榜
-              </div>
-              <button
-                type="button"
-                aria-label="關閉"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                onClick={() => setShowLeaderboard(false)}
-              >
-                <X size={22} color="#666" />
-              </button>
-            </div>
-
-            {leaderboardLoading ? (
-              <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>載入中…</div>
-            ) : leaderboardData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>目前尚無評分資料</div>
-            ) : (
-              leaderboardData.map((item, idx) => {
-                const rank = idx + 1;
-                const room = rooms.find((r) => r.id === item.roomId);
-                return (
-                  <div key={idx} style={styles.rankItem(rank)}>
-                    <div style={styles.rankNum(rank)}>{rank}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.presenter}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {room?.name} · {item.topic.length > 18 ? item.topic.slice(0, 18) + '…' : item.topic}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a73e8' }}>
-                        {item.average.toFixed(1)}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#999' }}>{item.count} 票</div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
       {showAdminLogin && (
         <div style={styles.overlay} onClick={() => !adminLoginLoading && setShowAdminLogin(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -1711,6 +1653,42 @@ export default function App() {
                 <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', opacity: 0.9, marginBottom: 6 }}>顯示筆數</div>
                 <div style={{ fontSize: isMobile ? '1.6rem' : '2.2rem', fontWeight: 700 }}>{filteredAndSortedAdminRatings.length}</div>
               </div>
+            </div>
+
+            <div style={{ ...styles.card, marginBottom: 20, padding: isMobile ? '14px' : '18px 20px' }}>
+              <div style={{ ...styles.cardTitle, marginBottom: 12 }}>
+                <Trophy size={20} color="#ffc107" />
+                即時排行榜
+              </div>
+              {leaderboardLoading ? (
+                <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>載入中…</div>
+              ) : leaderboardData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px', color: '#888' }}>目前尚無評分資料</div>
+              ) : (
+                leaderboardData.map((item, idx) => {
+                  const rank = idx + 1;
+                  const room = rooms.find((r) => r.id === item.roomId);
+                  return (
+                    <div key={`${item.roomId}-${item.presenter}-${idx}`} style={styles.rankItem(rank)}>
+                      <div style={styles.rankNum(rank)}>{rank}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.presenter}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {room?.name} · {item.topic.length > 18 ? item.topic.slice(0, 18) + '…' : item.topic}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a73e8' }}>
+                          {item.average.toFixed(1)}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#999' }}>{item.count} 票</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div style={{ marginBottom: 20 }}>
