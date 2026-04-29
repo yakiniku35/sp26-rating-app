@@ -1031,28 +1031,30 @@ export default function App() {
 
   return (
     <div style={styles.app}>
-      <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
-        <div>
-          <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>
-            {!isMobile && '🎓 '}{t('appTitle')}
+      {isAdminPage && (
+        <header style={{ ...styles.header, ...(isMobile ? { padding: '12px 10px', alignItems: 'flex-start' } : {}) }}>
+          <div>
+            <div style={{ ...styles.headerTitle, ...(isMobile ? { fontSize: '1rem' } : {}) }}>
+              {!isMobile && '🎓 '}{t('appTitle')}
+            </div>
+            <div style={{ ...styles.headerSub, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
+              {`${t('subAdmin')} · ${userProfile?.displayName || ''}`}
+            </div>
           </div>
-          <div style={{ ...styles.headerSub, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
-            {isAdminUser ? `${t('subAdmin')} · ${userProfile?.displayName || ''}` : t('subUser')}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
-          {isAdminUser && (
-            <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleAdminLogout}>
-              <LogOut size={16} />
-              {t('logout')}
+          <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
+            {isAdminUser && (
+              <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleAdminLogout}>
+                <LogOut size={16} />
+                {t('logout')}
+              </button>
+            )}
+            <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenAdmin}>
+              <Users size={16} />
+              {t('admin')}
             </button>
-          )}
-          <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleOpenAdmin}>
-            <Users size={16} />
-            {t('admin')}
-          </button>
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       {!isAdminPage && (
       <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 980, padding: '22px 22px 60px' }) }}>
