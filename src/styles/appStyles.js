@@ -44,6 +44,17 @@ export const styles = {
     margin: '0 auto',
     padding: '20px 16px 60px',
   },
+  formBanner: {
+    width: '100%',
+    aspectRatio: '16 / 5',
+    borderRadius: 12,
+    objectFit: 'cover',
+    objectPosition: 'center',
+    display: 'block',
+    marginBottom: 16,
+    boxShadow: '0 2px 16px rgba(0,0,0,0.08)',
+    background: '#e8f0fe',
+  },
   card: {
     background: '#fff',
     borderRadius: 16,

@@ -1069,6 +1069,14 @@ export default function App() {
 
       {!isAdminPage && (
       <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 980, padding: '22px 22px 60px' }) }}>
+        <img
+          src="/schedule/banner-horizontal.jpg"
+          alt="SP26 評分表橫幅"
+          style={{
+            ...styles.formBanner,
+            ...(isMobile ? { aspectRatio: '16 / 6', borderRadius: 10, marginBottom: 12 } : {}),
+          }}
+        />
         {!authReady ? (
           <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
             <div style={styles.cardTitle}>
