@@ -1,6 +1,8 @@
 export const I18N = {
   zh: {
     appTitle: '2026 成果發表會',
+    heroSubtitle: 'SP26 Presentation Day',
+    heroDescription: '請先選擇教室與報告者，再完成各項評分與回饋。',
     subAdmin: '管理員模式',
     subUser: '即時評分系統（匿名評分）',
     leaderboard: '排行榜',
@@ -37,6 +39,8 @@ export const I18N = {
   },
   en: {
     appTitle: '2026 Presentation Day',
+    heroSubtitle: 'SP26 Presentation Day',
+    heroDescription: 'Choose a room and presenter, then submit your scores and feedback.',
     subAdmin: 'Admin Mode',
     subUser: 'Live Anonymous Rating System',
     leaderboard: 'Leaderboard',

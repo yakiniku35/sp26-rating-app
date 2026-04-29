@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
-import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2 } from 'lucide-react';
+import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2, Globe } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
@@ -1041,27 +1041,6 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={() => setLanguage((prev) => (prev === 'zh' ? 'en' : 'zh'))}
-            title={language === 'zh' ? 'Switch to English' : '切換到中文'}
-            style={{
-              ...styles.headerBtn,
-              minWidth: isMobile ? 42 : 48,
-              minHeight: isMobile ? 34 : 36,
-              padding: isMobile ? '7px 10px' : '8px 12px',
-              justifyContent: 'center',
-              fontSize: isMobile ? '0.78rem' : '0.84rem',
-              fontWeight: 800,
-              background: 'rgba(255,255,255,0.96)',
-              color: '#1a73e8',
-              border: '1px solid rgba(255,255,255,0.85)',
-              boxShadow: '0 8px 18px rgba(13,71,161,0.26), inset 0 1px 0 rgba(255,255,255,0.8)',
-              transform: 'translateY(-1px)',
-            }}
-          >
-            {language === 'zh' ? 'EN' : '中'}
-          </button>
           {isAdminUser && (
             <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleAdminLogout}>
               <LogOut size={16} />
@@ -1077,14 +1056,45 @@ export default function App() {
 
       {!isAdminPage && (
       <main style={{ ...styles.main, ...(isMobile ? { padding: '14px 10px 40px' } : { maxWidth: 980, padding: '22px 22px 60px' }) }}>
-        <img
-          src="/schedule/banner-horizontal.jpg"
-          alt="SP26 評分表橫幅"
-          style={{
-            ...styles.formBanner,
-            ...(isMobile ? { aspectRatio: '16 / 6', borderRadius: 10, marginBottom: 12 } : {}),
-          }}
-        />
+        <section style={{ ...styles.formHero, ...(isMobile ? { borderRadius: 22, marginBottom: 14 } : {}) }}>
+          <div style={styles.formHeroAccent} />
+          <img
+            src="/schedule/banner-horizontal.jpg"
+            alt="SP26 評分表橫幅"
+            loading="lazy"
+            style={{
+              ...styles.formBanner,
+              ...(isMobile ? { aspectRatio: '5 / 1.35' } : {}),
+            }}
+          />
+          <div style={{ ...styles.formHeroBody, ...(isMobile ? { padding: '20px 18px 22px' } : {}) }}>
+            <div style={{ ...styles.formHeroContent, ...(isMobile ? { flexDirection: 'column', gap: 16 } : {}) }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...styles.formHeroSubtitle, ...(isMobile ? { fontSize: '0.72rem' } : {}) }}>
+                  {t('heroSubtitle')}
+                </p>
+                <h1 style={{ ...styles.formHeroTitle, ...(isMobile ? { fontSize: '2rem' } : {}) }}>
+                  {t('appTitle')}
+                </h1>
+                <p style={{ ...styles.formHeroDescription, ...(isMobile ? { fontSize: '0.95rem' } : {}) }}>
+                  {t('heroDescription')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLanguage((prev) => (prev === 'zh' ? 'en' : 'zh'))}
+                title={language === 'zh' ? 'Switch to English' : '切換到中文'}
+                style={{
+                  ...styles.languageToggle,
+                  ...(isMobile ? { alignSelf: 'flex-start', padding: '9px 14px', fontSize: '0.86rem' } : {}),
+                }}
+              >
+                <Globe size={16} />
+                {language === 'zh' ? 'English' : '中文'}
+              </button>
+            </div>
+          </div>
+        </section>
         {!authReady ? (
           <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
             <div style={styles.cardTitle}>
