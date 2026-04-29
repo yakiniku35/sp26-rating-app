@@ -1041,19 +1041,27 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap', justifyContent: 'flex-end' }}>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+          <button
+            type="button"
+            onClick={() => setLanguage((prev) => (prev === 'zh' ? 'en' : 'zh'))}
+            title={language === 'zh' ? 'Switch to English' : '切換到中文'}
             style={{
               ...styles.headerBtn,
-              padding: isMobile ? '6px 8px' : '6px 10px',
-              fontSize: isMobile ? '0.74rem' : '0.8rem',
-              background: 'rgba(255,255,255,0.2)',
+              minWidth: isMobile ? 42 : 48,
+              minHeight: isMobile ? 34 : 36,
+              padding: isMobile ? '7px 10px' : '8px 12px',
+              justifyContent: 'center',
+              fontSize: isMobile ? '0.78rem' : '0.84rem',
+              fontWeight: 800,
+              background: 'rgba(255,255,255,0.96)',
+              color: '#1a73e8',
+              border: '1px solid rgba(255,255,255,0.85)',
+              boxShadow: '0 8px 18px rgba(13,71,161,0.26), inset 0 1px 0 rgba(255,255,255,0.8)',
+              transform: 'translateY(-1px)',
             }}
           >
-            <option value="zh">中文</option>
-            <option value="en">English</option>
-          </select>
+            {language === 'zh' ? 'EN' : '中'}
+          </button>
           {isAdminUser && (
             <button style={{ ...styles.headerBtn, ...(isMobile ? { padding: '5px 7px', fontSize: '0.72rem' } : {}) }} onClick={handleAdminLogout}>
               <LogOut size={16} />
