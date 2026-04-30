@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, deleteDoc, updateDoc, getDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
-import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2, Globe } from 'lucide-react';
+import { Star, Send, BarChart3, MessageSquare, ChevronDown, X, Trophy, CheckCircle, Users, Table2, Download, LogOut, CalendarDays, Trash2, Globe, ArrowRight } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
 // Config & Constants
@@ -1108,27 +1108,43 @@ export default function App() {
         ) : (
           <>
         <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
-          <div style={styles.cardTitle}>
-            <CalendarDays size={18} color="#1a73e8" />
-            {t('scheduleTitle')}
-          </div>
-          <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
-            {t('scheduleDesc')}
-          </div>
-          <button
-            type="button"
+          <div
             style={{
-              ...styles.primaryBtn,
-              marginTop: 0,
-              width: '100%',
-              maxWidth: 420,
-              background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 45%, #0f766e 100%)',
-              boxShadow: '0 14px 28px rgba(29,78,216,0.18)',
+              display: 'flex',
+              alignItems: isMobile ? 'stretch' : 'center',
+              justifyContent: 'space-between',
+              gap: isMobile ? 14 : 18,
+              flexDirection: isMobile ? 'column' : 'row',
             }}
-            onClick={handleOpenSchedule}
           >
-            {t('scheduleBtn')}
-          </button>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ ...styles.cardTitle, marginBottom: 8 }}>
+                <CalendarDays size={18} color="#1a73e8" />
+                {t('scheduleTitle')}
+              </div>
+              <div style={{ fontSize: '0.86rem', color: '#555', lineHeight: 1.6 }}>
+                {t('scheduleDesc')}
+              </div>
+            </div>
+            <button
+              type="button"
+              style={{
+                ...styles.primaryBtn,
+                flexShrink: 0,
+                margin: 0,
+                width: isMobile ? '100%' : 'auto',
+                minWidth: isMobile ? '100%' : 156,
+                padding: isMobile ? '12px 14px' : '12px 18px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #0f766e 100%)',
+                boxShadow: '0 12px 24px rgba(29,78,216,0.18)',
+              }}
+              onClick={handleOpenSchedule}
+            >
+              {t('scheduleBtn')}
+              <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
 
         <div style={{ ...styles.card, ...(isMobile ? { borderRadius: 12, padding: 14, marginBottom: 12 } : {}) }}>
