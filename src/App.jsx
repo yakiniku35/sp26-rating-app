@@ -1200,6 +1200,7 @@ export default function App() {
               <div style={{ fontSize: '0.85rem', color: '#333', background: '#f5f8ff', padding: '10px 14px', borderRadius: 8, lineHeight: 1.8, marginBottom: 12 }}>
                 <div><span style={{ color: '#666' }}>報告時間：</span><span style={{ fontWeight: 600 }}>{presentation.time || '—'}</span></div>
                 <div><span style={{ color: '#666' }}>報告人：</span><span style={{ fontWeight: 600 }}>{presentation.presenter}</span></div>
+                {presentation.topic && <div><span style={{ color: '#666' }}>報告題目：</span><span style={{ fontWeight: 600 }}>{presentation.topic}</span></div>}
                 {presentation['實習'] && <div><span style={{ color: '#666' }}>實習單位：</span><span style={{ fontWeight: 600 }}>{presentation['實習']}</span></div>}
               </div>
 
